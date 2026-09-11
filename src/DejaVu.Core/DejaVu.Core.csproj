@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>DejaVu.Core</RootNamespace>
+
+    <!-- Windows-targeted and 64-bit only: this talks to the pad through WinUSB and injects
+         input through user32, neither of which exists anywhere else. -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+</Project>

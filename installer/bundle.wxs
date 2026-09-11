@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  The bootstrapper: the .NET 10 Desktop Runtime if it is missing, then the MSI.
+
+  This exists because the MSI cannot honestly do it. An MSI describes a machine state; it has
+  no good way to go and fetch a 57 MB prerequisite part way through, and the format's own
+  answer to that problem is a bootstrapper. So both ship. Deployment takes the .msi and
+  pushes the runtime by its own means, which a managed environment does anyway; a person
+  downloading it takes the .exe and is never asked to know what a runtime is.
+
+  Built by installer\build.ps1, which fetches the runtime into dist\prereq first so the
+  payload's hash and size are computed from the real file rather than written down here.
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Bundle Name="n52 DejaVu"
+          Manufacturer="Shokkstokk"
+          Version="1.0.0"
+          UpgradeCode="C41E7D25-9A03-4B68-8F17-2D6B905C3AE4"
+          Compressed="no">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl="https://polyformproject.org/licenses/noncommercial/1.0.0"
+          SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
+
+    <!--
+      Pinned to the exact version this bundle carries, and that is a real limitation worth
+      stating: the runtime records itself as one registry value per patch, named for the
+      patch, and Burn can read a value it can name but cannot enumerate one. So a machine
+      with a NEWER patch than this bundle knows about does not match, and the runtime
+      installer runs - where it finds something newer already there and exits without
+      changing anything. Wasteful rather than wrong, and the pin moves when the chained
+      version below does.
+    -->
+    <util:DirectorySearch Id="DesktopRuntime10"
+                          Variable="HasDesktopRuntime"
+                          Path="[ProgramFiles64Folder]dotnet\shared\Microsoft.WindowsDesktop.App\10.0.11"
+                          Result="exists" />
+
+    <Chain>
+      <!--
+        Permanent, because the runtime is shared with everything else on the machine and
+        removing n52 DejaVu must not take it from whatever else came to depend on it.
+
+        Compressed="no" keeps it out of this file: the payload is fetched only when the
+        detect condition says it is needed, which is what keeps the download small for the
+        many people who already have it.
+      -->
+      <ExePackage Id="DesktopRuntime"
+                  DisplayName=".NET 10 Desktop Runtime"
+                  Permanent="yes"
+                  Vital="yes"
+                  PerMachine="yes"
+                  DetectCondition="HasDesktopRuntime"
+                  InstallArguments="/install /quiet /norestart"
+                  RepairArguments="/repair /quiet /norestart">
+        <ExePackagePayload
+            Compressed="no"
+            SourceFile="..\dist\prereq\windowsdesktop-runtime-win-x64.exe"
+            DownloadUrl="https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <!--
+        Installed with its default features, which means pad setup is included. The
+        bootstrapper's stock interface has no feature tree and cannot be given one without a
+        custom theme, so the choice lives in the .msi: run that directly to see it, or pass
+        ADDLOCAL=Main to msiexec to take the software without touching the device.
+
+        NOT visible in Add/Remove Programs. That is the default and it should have been left
+        alone: the bundle registers itself there, so a package that registers as well puts the
+        same product in the list twice. Worse than untidy - the two entries carry different
+        uninstall commands, and removing the inner one leaves the bundle's entry behind
+        pointing at something that is no longer installed.
+      -->
+      <MsiPackage Id="Application"
+                  SourceFile="..\dist\n52dejavu-1.0.msi"
+                  Compressed="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

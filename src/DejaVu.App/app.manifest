@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="n52.DejaVu" />
+
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <!--
+          Elevation is mandatory.
+
+          Windows forbids a non-elevated process from injecting keyboard events into the
+          window of an elevated process (the UIPI mechanism): remapping would be silently
+          ineffective in any game or launcher started as administrator, with no error
+          message at all.
+
+          A consequence of this: the registry Run key is no longer usable for automatic
+          startup, since Windows refuses to elevate at logon. A scheduled task is used
+          instead — see StartupTask.
+        -->
+        <!-- asInvoker, not requireAdministrator. Reading the pad over WinUSB needs no
+             elevation - measured, not assumed - so demanding it up front would put a UAC
+             prompt in front of every launch to buy nothing most of the time.
+
+             Elevation still matters for one thing: UIPI blocks injection into a window
+             owned by an elevated process, so remapping is dead inside an elevated game or
+             launcher. That is the "Run as administrator" option, which relaunches this
+             process elevated on demand rather than always. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 and 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+      <!-- Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" />
+    </application>
+  </compatibility>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">permonitorv2</dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>

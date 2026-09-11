@@ -1,0 +1,299 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:s="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- Toolbar -->
+  <s:String x:Key="EngineRunning">Pad connected</s:String>
+  <s:String x:Key="EngineStopped">No pad</s:String>
+  <s:String x:Key="AddAppLabel">Add</s:String>
+  <s:String x:Key="RemoveAppLabel">Delete</s:String>
+  <s:String x:Key="OptionsLabel">Options</s:String>
+  <s:String x:Key="VersionLabel">Version {0}</s:String>
+  <s:String x:Key="HelpLink">Help</s:String>
+  <s:String x:Key="HelpMissing">The help file is not beside the application. It is docs/help.md in the source.</s:String>
+  <s:String x:Key="AutoSwitch">Application profile swapping</s:String>
+  <s:String x:Key="LockWindowSize">Lock window size</s:String>
+  <s:String x:Key="LockWindowSizeTip">Holds the window at the size it is now: the edges cannot be dragged and the maximize button is removed. Minimize still works, so a locked window can always be got out of the way. Uncheck it to resize again.</s:String>
+  <s:String x:Key="StartWithWindows">Start with Windows</s:String>
+
+  <!-- Profiles -->
+  <s:String x:Key="NewProfile">Creates a profile and asks what to call it.</s:String>
+  <s:String x:Key="LiveProfileMarker">LIVE</s:String>
+  <s:String x:Key="ProfileApps">Associated applications</s:String>
+  <s:String x:Key="AddAppTip">Add the application</s:String>
+  <s:String x:Key="RemoveAppTip">Delete the application</s:String>
+  <s:String x:Key="ProcessNameTip">Process name without .exe — wowclassic, for instance</s:String>
+  <s:String x:Key="BrowseApp">Browse for a program...</s:String>
+  <s:String x:Key="DetectApp">Detect the current application</s:String>
+  <s:String x:Key="LastProfile">There has to be one profile left.</s:String>
+  <s:String x:Key="ConfirmDelete">Delete "{0}"? Everything assigned in it goes too.</s:String>
+  <s:String x:Key="DetectionPending">Bring the program you want to the front — reading in 4 seconds…</s:String>
+  <s:String x:Key="DetectionFailed">Nothing came back.</s:String>
+  <s:String x:Key="DetectionOk">Found {0}. Add it with the button beside the box.</s:String>
+  <s:String x:Key="DefaultProfileName">Default</s:String>
+
+  <!-- Help -->
+
+  <!-- Pages -->
+  <s:String x:Key="TabAssign">Assign Buttons</s:String>
+  <s:String x:Key="TabProfiles">Manage Profiles</s:String>
+
+  <!-- Modes -->
+  <s:String x:Key="ModeName1">Keymap 1</s:String>
+  <s:String x:Key="ModeName2">Keymap 2</s:String>
+  <s:String x:Key="ModeName3">Keymap 3</s:String>
+  <s:String x:Key="ModeName4">Keymap 4</s:String>
+  <s:String x:Key="ModeName5">Keymap 5</s:String>
+  <s:String x:Key="ModeName6">Keymap 6</s:String>
+  <s:String x:Key="ModeName7">Keymap 7</s:String>
+  <s:String x:Key="ModeName8">Keymap 8</s:String>
+  <s:String x:Key="ModeSwitchLabel">When pressed</s:String>
+  <s:String x:Key="ModeSwitchCycle">Step to the next mode</s:String>
+  <s:String x:Key="ModeSwitchSelect">Go to a specific mode</s:String>
+  <s:String x:Key="ModeSwitchHold">Hold a mode while pressed</s:String>
+  <s:String x:Key="ModeTargetLabel">Mode</s:String>
+  <s:String x:Key="ModeSwitchHelp">"Hold" works like a shift key: the mode applies while the input is down and reverts when you let go.</s:String>
+
+  <!-- Keypad view -->
+  <s:String x:Key="KeyNumber">Button {0}</s:String>
+  <s:String x:Key="DiagonalLabel">Corner — {0} together</s:String>
+  <s:String x:Key="DiagonalTooltip">Corner: {0} held together</s:String>
+  <s:String x:Key="SignalPrefix">Hardware: {0}</s:String>
+
+  <!-- Action editor -->
+  <s:String x:Key="NoInputSelected">No input selected</s:String>
+  <s:String x:Key="SelectionCount">{0} controls selected</s:String>
+
+  <!-- Selection menu and bulk pane -->
+  <s:String x:Key="MenuEnable">Enable</s:String>
+  <s:String x:Key="MenuDisable">Disable</s:String>
+  <s:String x:Key="MenuReset">Reset to controller default</s:String>
+  <s:String x:Key="MenuResetEverywhere">Reset to controller default in every keymap</s:String>
+  <s:String x:Key="MenuEnableMany">Enable {0} controls</s:String>
+  <s:String x:Key="MenuDisableMany">Disable {0} controls</s:String>
+  <s:String x:Key="MenuResetMany">Reset {0} controls to controller default</s:String>
+  <s:String x:Key="BulkEnable">Enable</s:String>
+  <s:String x:Key="BulkDisable">Disable</s:String>
+  <s:String x:Key="CurrentSettingsFor">Current settings for:</s:String>
+  <s:String x:Key="KeyToSend">Mapped Key</s:String>
+  <s:String x:Key="OrPressKey">Press a key</s:String>
+  <s:String x:Key="ModifiersLabel">Held with the key — for Ctrl + C, Win + R and the like</s:String>
+  <s:String x:Key="ModifiersTip">Check these to send a combination rather than a single key. They are held down while the key is sent and released with it, so choosing C and checking Ctrl behaves exactly like Ctrl + C typed on the keyboard.</s:String>
+  <s:String x:Key="TextToType">Enter the text below:</s:String>
+  <s:String x:Key="EditLabel">Edit…</s:String>
+  <s:String x:Key="ClearLabel">Clear</s:String>
+  <s:String x:Key="TextHelp">Standard Unicode</s:String>
+  <s:String x:Key="ProgramPath">Open an App, URL or Doc</s:String>
+  <s:String x:Key="ArgumentsLabel">Arguments</s:String>
+  <s:String x:Key="WheelNotches">Scroll clicks:</s:String>
+  <s:String x:Key="ScrollUp">Up</s:String>
+  <s:String x:Key="ScrollDown">Down</s:String>
+  <s:String x:Key="StepsLabel">Steps</s:String>
+  <s:String x:Key="MoveStepUp">Move up</s:String>
+  <s:String x:Key="MoveStepDown">Move down</s:String>
+  <s:String x:Key="AddKeyStep">Record key</s:String>
+  <s:String x:Key="AddDelayStep">Pause (ms)</s:String>
+  <s:String x:Key="AddHoldStep">Hold key</s:String>
+  <s:String x:Key="HoldStepTip">Presses a key and leaves it down, so later steps happen while it is held. Pair it with Release key. Anything still held when the macro ends is let go for you.</s:String>
+  <s:String x:Key="ReleaseStepTip">Lets go of a key an earlier Hold key step pressed.</s:String>
+  <s:String x:Key="AddReleaseStep">Release key</s:String>
+  <s:String x:Key="AddTextStep">Record text</s:String>
+  <s:String x:Key="AddClickStep">Add mouse click</s:String>
+  <s:String x:Key="RemoveStepLabel">Delete</s:String>
+  <s:String x:Key="RepeatLabel">Send:</s:String>
+  <s:String x:Key="RepeatDelayLabel">Repeat delay (ms):</s:String>
+  <s:String x:Key="ChooseProgram">Pick a program</s:String>
+  <s:String x:Key="ProgramFilter">Shortcuts and programs|*.lnk;*.exe;*.bat;*.cmd|Shortcuts|*.lnk|Programs|*.exe|All files|*.*</s:String>
+  <s:String x:Key="AskDelay">How long to wait, in milliseconds:</s:String>
+  <s:String x:Key="AskText">What should it type?</s:String>
+
+  <!-- Macro repeat -->
+  <s:String x:Key="RepeatOnce">Once</s:String>
+  <s:String x:Key="RepeatWhileHeld">Hold continuously</s:String>
+  <s:String x:Key="RepeatToggle">Toggle on/off</s:String>
+
+  <!-- Key capture -->
+  <s:String x:Key="CaptureTitle">Key binding</s:String>
+  <s:String x:Key="CaptureHelp">Press a key</s:String>
+  <s:String x:Key="CaptureUnsupported">Pause cannot be sent by any program.</s:String>
+  <s:String x:Key="AppTitle">n52 DejaVu</s:String>
+  <s:String x:Key="OkLabel">OK</s:String>
+  <s:String x:Key="CancelLabel">Cancel</s:String>
+
+  <!-- Tray -->
+  <s:String x:Key="OpenEditor">Open n52 DejaVu</s:String>
+  <s:String x:Key="QuitLabel">Quit</s:String>
+  <s:String x:Key="TrayProfile">Using {0}</s:String>
+  <s:String x:Key="AlreadyRunning">n52 DejaVu is open already.&#x0a;&#x0a;Its icon sits by the clock, bottom right.</s:String>
+
+  <!-- Engine messages -->
+  <s:String x:Key="DeviceUnavailable">No n52 found. Check that it is plugged in, and that driver/install.ps1 has been run once on this PC — it will connect on its own as soon as it appears.</s:String>
+  <s:String x:Key="EngineStarted">Pad connected.</s:String>
+  <s:String x:Key="LedsUnavailable">Connected, but the scroll wheel and the keymap lamps are unavailable — MI_01 is not on WinUSB. Re-run driver/install.ps1.</s:String>
+  <s:String x:Key="KeysUnavailable">Connected, but the keys, d-pad and thumb controls cannot be remapped — MI_00 is not on WinUSB. Re-run driver/install.ps1.</s:String>
+  <s:String x:Key="EngineHalted">Pad released.</s:String>
+  <s:String x:Key="DeviceLost">The pad was unplugged. It will reconnect by itself when it is back.</s:String>
+  <s:String x:Key="ErrorMessage">Error: {0}</s:String>
+  <s:String x:Key="LaunchFailed">"{0}" would not open: {1}</s:String>
+  <s:String x:Key="StartupFailed">Could not set up start-with-Windows: {0}</s:String>
+
+  <!-- Key catalog categories -->
+  <s:String x:Key="CatLetters">Letters</s:String>
+  <s:String x:Key="CatDigits">Digits</s:String>
+  <s:String x:Key="CatPunctuation">Punctuation and symbols</s:String>
+  <s:String x:Key="CatFunction">Function keys</s:String>
+  <s:String x:Key="CatFunctionHigh">Function keys F13 to F24</s:String>
+  <s:String x:Key="CatNavigation">Navigation</s:String>
+  <s:String x:Key="CatModifiers">Modifiers</s:String>
+  <s:String x:Key="CatNumpad">Numeric keypad</s:String>
+
+  <!-- Physical input labels -->
+  <s:String x:Key="BtnRound">Thumb btn</s:String>
+  <s:String x:Key="BtnUp">&#8593;</s:String>
+  <s:String x:Key="BtnDown">&#8595;</s:String>
+  <s:String x:Key="BtnLeft">&#8592;</s:String>
+  <s:String x:Key="BtnRight">&#8594;</s:String>
+  <s:String x:Key="BtnUpLeft">&#8598;</s:String>
+  <s:String x:Key="BtnUpRight">&#8599;</s:String>
+  <s:String x:Key="BtnDownLeft">&#8601;</s:String>
+  <s:String x:Key="BtnDownRight">&#8600;</s:String>
+  <s:String x:Key="BtnWheelUp">Wheel &#8593;</s:String>
+  <s:String x:Key="BtnWheelDown">Wheel &#8595;</s:String>
+  <s:String x:Key="BtnWheelClick">Wheel click</s:String>
+
+  <!-- What a tile says it is set to. Read by Describe, so these are fragments rather than
+       sentences: each one has to sit inside a row that is 172 units wide. -->
+  <s:String x:Key="DescNone">—</s:String>
+  <s:String x:Key="DescModeCycle">next mode</s:String>
+  <s:String x:Key="DescModeSelect">go to mode {0}</s:String>
+  <s:String x:Key="DescModeHold">hold mode {0}</s:String>
+  <s:String x:Key="DescPassthrough">passes through</s:String>
+  <s:String x:Key="DescMacroMissing">Macro (deleted)</s:String>
+  <s:String x:Key="DescText">types "{0}"</s:String>
+  <s:String x:Key="DescLaunch">opens {0}</s:String>
+  <s:String x:Key="DescWheelUp">scroll up</s:String>
+  <s:String x:Key="DescWheelDown">scroll down</s:String>
+  <s:String x:Key="DescWheelCount">{0} ×{1}</s:String>
+
+  <!-- Assignment rows -->
+  <!-- Appearance -->
+  <s:String x:Key="TabAppearance">Manage Themes</s:String>
+  <s:String x:Key="ThemeListLabel">Themes</s:String>
+  <s:String x:Key="LiveThemeMarker">IN USE</s:String>
+  <s:String x:Key="ApplyTheme">Apply</s:String>
+  <s:String x:Key="ThemePreviewHelp">Selecting a theme previews it on this window. Click Apply to keep it - leaving this tab puts back the one in use.</s:String>
+  <s:String x:Key="PresetThemeNote">This theme came with the application and cannot be edited. Clone it to make a version you can change.</s:String>
+  <s:String x:Key="DeleteThemeQuestion">Delete the theme "{0}"?</s:String>
+  <s:String x:Key="DeleteAppliedTheme">"{0}" is the theme in use. Deleting it switches back to Dark. Delete it?</s:String>
+  <s:String x:Key="SlotShell">Shell</s:String>
+  <s:String x:Key="SlotPane">Pane</s:String>
+  <s:String x:Key="SlotAccent">Accent</s:String>
+  <s:String x:Key="SlotHighlight">Highlight</s:String>
+  <s:String x:Key="SlotShellHelp">The window's background color, used exactly as picked. The panes, borders and text follow from it, keeping the same contrast whatever color you choose. Drag the saturation to nothing for plain gray.</s:String>
+  <s:String x:Key="SlotPaneHelp">The panels that sit on the window - the two assignment lists, the device, the libraries. How far it stands off the shell is the difference between one flat surface and cards laid on a desk. Row borders and hover fills follow it.</s:String>
+  <s:String x:Key="SlotAccentHelp">Frames every pane, draws the device and marks the keymap in use. Avoid green and red: those stay reserved for whether the pad is running.</s:String>
+  <s:String x:Key="SlotHighlightHelp">Marks the control you are editing, and its row in the list. Pick something unmistakable against the accent.</s:String>
+  <s:String x:Key="SlotLive">Live</s:String>
+  <s:String x:Key="SlotLiveHelp">Flashes on a control, and on its row, while you are holding that key down on the pad. Separate from the highlight so that pressing the control you are already editing still shows something.</s:String>
+  <s:String x:Key="ThemeIsInUse">In use. Color changes take effect straight away and are saved as you make them.</s:String>
+  <s:String x:Key="ThemePreviewing">Previewing. Color changes are saved to this theme, but the application goes back to the theme in use when you leave this page - click Apply to keep this one.</s:String>
+  <s:String x:Key="SlotShellTip">The window itself: the background behind every page, the status bar along the bottom, and the inside of text boxes, dropdowns and lists. The text colors are worked out from it, so a light shell gives dark text on its own.</s:String>
+  <s:String x:Key="SlotPaneTip">The panels sitting on the window: both assignment lists and the device on Assign Buttons, the profile and macro libraries, the toolbar, and the menu a dropdown opens. Row borders and the shading under whatever you are pointing at are worked out from it.</s:String>
+  <s:String x:Key="SlotAccentTip">Structure and emphasis: the border around every panel, the drawing of the device itself, the page tab you are on, the keymap in use, the check mark in a checkbox, and the settings-file link in the status bar.</s:String>
+  <s:String x:Key="SlotHighlightTip">Whatever is being edited: the selected row in the assignment lists, its outline on the device drawing, the selected entry in any library - profiles, macros, steps, themes - and the border of a text box you are typing in.</s:String>
+  <s:String x:Key="SlotLiveTip">Appears only while a key is physically held down on the pad: the control on the drawing and its row in the list both flash this, then go back. Keep it clear of the highlight, or pressing the key you are already editing will be hard to see.</s:String>
+  <s:String x:Key="ThemeListTip">The themes that came with the application, then the ones you have made. Click one to see it on the real window - nothing is kept until you press Apply.</s:String>
+  <s:String x:Key="NewThemeTip">Starts a new theme, taking its colors from the one being previewed - so you begin from something close rather than from nothing.</s:String>
+  <s:String x:Key="ApplyThemeTip">Keeps the theme you are previewing. Until you press this, the window goes back to the theme in use as soon as you leave this page. Color changes are saved either way.</s:String>
+  <s:String x:Key="PickerFieldTip">Drag to set how strong the color is, left to right, and how bright, top to bottom. The window recolors as you drag, so you can judge a color where it will actually be used.</s:String>
+  <s:String x:Key="PickerSpectrumTip">Drag to choose the hue the square above works from.</s:String>
+  <s:String x:Key="PickerHexTip">The color written the usual way, as #RRGGBB. Type or paste one to set it exactly.</s:String>
+  <s:String x:Key="PickerChannelTip">Red, green and blue, each from 0 to 255. Type a value to set the color exactly.</s:String>
+  <s:String x:Key="PickerPreviewTip">The color currently chosen for the element selected above.</s:String>
+
+  <s:String x:Key="DefaultThemeName">My theme</s:String>
+  <s:String x:Key="ThemeCopyName">{0} copy</s:String>
+
+  <s:String x:Key="RunElevated">Run as administrator</s:String>
+  <s:String x:Key="RunElevatedTip">Needed only to remap inside programs that themselves run as administrator — Windows silently discards input sent to those windows otherwise. Turning this on or off restarts n52 DejaVu.</s:String>
+  <s:String x:Key="ConfirmElevate">Restart n52 DejaVu as administrator?
+
+Windows will ask you to confirm. This is only needed to remap inside programs that run as administrator themselves.</s:String>
+  <s:String x:Key="ConfirmUnelevate">Restart n52 DejaVu without administrator rights?
+
+Remapping will stop working inside any program that runs as administrator.</s:String>
+  <s:String x:Key="ElevationFailed">Could not restart. n52 DejaVu is still running as before.</s:String>
+  <s:String x:Key="TrayKeymap">n52 DejaVu — {0} active</s:String>
+  <s:String x:Key="TrayNoController">n52 DejaVu — no controller detected</s:String>
+  <s:String x:Key="SaveFailed">Could not save the configuration: {0}</s:String>
+  <s:String x:Key="ProfileLabel">Profile</s:String>
+  <s:String x:Key="GroupBasic">Basic</s:String>
+  <s:String x:Key="GroupKeyboard">Keyboard</s:String>
+  <s:String x:Key="GroupMouse">Mouse</s:String>
+  <s:String x:Key="GroupKeymap">Keymaps</s:String>
+  <s:String x:Key="GroupOther">Needs setting up</s:String>
+  <s:String x:Key="ChoicePressKey">Press a key…</s:String>
+  <s:String x:Key="ChoiceDefault">Controller default</s:String>
+  <!-- One string per button rather than a "{0} click" format: X1 and X2 are Windows'
+       own names for the two thumb buttons, and they say nothing about what they do.
+       Nearly every mouse and application treats them as Back and Forward. -->
+  <s:String x:Key="ClickLeft">Left click</s:String>
+  <s:String x:Key="ClickRight">Right click</s:String>
+  <s:String x:Key="ClickMiddle">Middle click</s:String>
+  <s:String x:Key="ClickX1">Back (mouse 4)</s:String>
+  <s:String x:Key="ClickX2">Forward (mouse 5)</s:String>
+  <s:String x:Key="ChoiceScroll">Scroll</s:String>
+  <s:String x:Key="ChoiceSwitchTo">Switch to {0}</s:String>
+  <s:String x:Key="ChoiceHold">Hold {0}</s:String>
+  <s:String x:Key="ChoiceText">Text</s:String>
+  <s:String x:Key="ChoiceLaunchNamed">Launch: {0}</s:String>
+  <s:String x:Key="ChoiceTextNamed">Type: {0}</s:String>
+  <s:String x:Key="ChoiceLaunch">Application</s:String>
+  <s:String x:Key="ChoiceSelectMacro">Macro</s:String>
+  <s:String x:Key="ChoiceMacroNamed">Macro: {0}</s:String>
+  <s:String x:Key="EnabledTooltip">Switch this control off. It sends nothing at all while unchecked, and any assignment is kept for when you switch it back on.</s:String>
+
+  <!-- Macro library -->
+  <s:String x:Key="TabMacros">Manage Macros</s:String>
+  <s:String x:Key="MacroListLabel">Macros</s:String>
+  <s:String x:Key="DefaultMacroName">New macro</s:String>
+  <s:String x:Key="CopyOf">{0} copy</s:String>
+  <s:String x:Key="ChooseMacro">Macro to play</s:String>
+  <s:String x:Key="NoMacrosYet">No macros yet. Build one on the Manage Macros tab, then come back and choose it here.</s:String>
+  <s:String x:Key="ConfirmDeleteMacro">Delete the macro "{0}"?</s:String>
+  <s:String x:Key="ConfirmDeleteMacroInUse">Delete the macro "{0}"?&#x0a;&#x0a;It is bound to {1} control(s). They will stop doing anything, and will not send their own key either.</s:String>
+  <s:String x:Key="AddEnterStep">Enter</s:String>
+  <s:String x:Key="MacroHelp">Steps play in order. A key step holds for its own delay before releasing, so a delay step is only needed for a pause between actions. How the macro repeats is set per control, on the assign page.</s:String>
+
+
+  <!-- The three library pages: profiles, macros and themes. -->
+  <s:String x:Key="ProfileListLabel">Profiles</s:String>
+  <s:String x:Key="NewEntry">+ New</s:String>
+  <s:String x:Key="NewMacroTip">Creates a macro and asks what to call it.</s:String>
+  <s:String x:Key="MenuRenameEntry">Rename…</s:String>
+  <s:String x:Key="MenuDuplicateEntry">Clone</s:String>
+  <s:String x:Key="MenuDeleteEntry">Delete</s:String>
+  <s:String x:Key="SlotText">Text</s:String>
+  <s:String x:Key="SlotTextTip">The color of the words on screen. Leave it alone and it is worked out from Shell - near-white on a dark theme, near-black on a light one - which is what keeps any theme readable. Set it and that guarantee is yours to keep.</s:String>
+  <s:String x:Key="SlotTextHelp">Body text. Dim text follows it automatically, the same distance toward the shell that the derived pair has always used, so help text and the small markers stay in step with whatever you pick. Only Shell and Pane decide readability, so check this one against both.</s:String>
+  <s:String x:Key="TextGroupLabel">Text size (applies to the whole program)</s:String>
+  <s:String x:Key="ColorGroupLabel">Colors</s:String>
+  <s:String x:Key="FontSizeLabel">Size</s:String>
+  <s:String x:Key="FontSizeTip">Text size for the whole application, not for the theme you have selected. Headings, help text and the small markers sit at fixed distances from it, so they all move together. Limited to 10-16: parts of the window are laid out to fixed widths, and text larger than that would be clipped rather than wrapped.&#x0a;&#x0a;The typeface itself is not a choice - it is whatever Windows uses for its own message text.</s:String>
+  <s:String x:Key="MenuUseAsFallback">Use when no program matches</s:String>
+  <s:String x:Key="FallbackMarker">FALLBACK</s:String>
+  <s:String x:Key="FallbackProfileTip">The profile the pad falls back to when auto-switch finds no program that claims one. Right-click any profile to move it here.</s:String>
+  <s:String x:Key="LockedProfileNote">This profile leaves every control at its controller default, in all eight keymaps, and cannot be changed. It is here so there is always a way back to a plain pad. Clone it to start a layout of your own.</s:String>
+  <s:String x:Key="LockedProfileShort">Read-only: every control is at its controller default.</s:String>
+  <s:String x:Key="NameBlank">A name cannot be blank.&#x0a;&#x0a;{0}</s:String>
+  <s:String x:Key="NameTaken">Something else in this list is already called that.&#x0a;&#x0a;{0}</s:String>
+  <s:String x:Key="NewProfileName">Untitled profile</s:String>
+  <s:String x:Key="NewProfileQuestion">Name for the new profile:</s:String>
+  <s:String x:Key="RenameProfileQuestion">Rename this profile:</s:String>
+  <s:String x:Key="NewMacroQuestion">Name for the new macro:</s:String>
+  <s:String x:Key="RenameMacroQuestion">Rename this macro:</s:String>
+  <s:String x:Key="NewThemeQuestion">Name for the new theme:</s:String>
+  <s:String x:Key="RenameThemeQuestion">Rename this theme:</s:String>
+  <s:String x:Key="NoMacroSelected">no macro selected</s:String>
+  <s:String x:Key="NoThemeSelected">no theme selected</s:String>
+</ResourceDictionary>

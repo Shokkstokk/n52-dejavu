@@ -1,0 +1,74 @@
+﻿; n52winusb.inf - binds Microsoft's inbox WinUSB driver to the n52's two USB interfaces.
+;
+; Both are required for n52 DejaVu to work. Without them the application cannot reach the
+; pad at all, and the pad behaves as an ordinary keyboard and mouse.
+;
+; MI_01 carries the scroll wheel AND the three state LEDs (HID LED page 0x08, usages
+; 0x01-0x03). While MI_01 is a system mouse collection, Windows refuses to carry an
+; output report to it from user mode, so the LEDs are unreachable without this.
+;
+; MI_00 carries the 14 keys, the d-pad, the thumb bar and the round thumb button. Reading
+; it directly is what removed the last kernel driver from this project: a class filter
+; driver binds only at boot, so a pad plugged in afterwards was invisible to it and every
+; binding silently stopped working until a reboot, with no error anywhere.
+;
+; THE COST. Once rebound, the pad is no longer a keyboard or a mouse to Windows, so it does
+; nothing whatsoever unless n52 DejaVu is running - not even an unassigned key.
+; driver/uninstall.ps1 reverses it.
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = USBDevice
+ClassGuid   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %ProviderName%
+CatalogFile = n52winusb.cat
+DriverVer   = 09/03/2026,1.1.0.0
+PnpLockDown = 1
+
+[Manufacturer]
+%ProviderName% = Standard,NTamd64
+
+[Standard.NTamd64]
+%WheelName% = Wheel_Install, USB\VID_050D&PID_0815&MI_01
+%KeysName%  = Keys_Install,  USB\VID_050D&PID_0815&MI_00
+
+; --- MI_01: wheel and LEDs -------------------------------------------------
+
+[Wheel_Install]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[Wheel_Install.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[Wheel_Install.HW]
+Include = winusb.inf
+Needs   = WINUSB.NT.HW
+AddReg  = Wheel_AddReg
+
+[Wheel_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{B8B0B1C4-6A31-4E8D-9A2F-5C7E1D3A9F60}"
+
+; --- MI_00: keys, d-pad and thumb buttons ----------------------------------
+
+[Keys_Install]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[Keys_Install.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[Keys_Install.HW]
+Include = winusb.inf
+Needs   = WINUSB.NT.HW
+AddReg  = Keys_AddReg
+
+[Keys_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{0F2D9A41-7C63-4E58-9B10-8E4D2F6A5C37}"
+
+[Strings]
+ProviderName = "n52 DejaVu"
+WheelName    = "n52 SpeedPad wheel and LEDs (WinUSB)"
+KeysName     = "n52 SpeedPad keys (WinUSB)"

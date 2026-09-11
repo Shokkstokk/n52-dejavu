@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  The n52 DejaVu MSI.
+
+  Built by installer\build.ps1, which publishes the application into dist\app first. This
+  file packages what is put in front of it and knows how to build nothing.
+
+  Two features. Main is the software and cannot be declined. PadSetup hands the pad's two
+  USB interfaces to Microsoft's winusb.sys, and is a feature rather than a checkbox on a
+  hand-written dialog because MSI already has a feature tree with checkboxes in it - and
+  because making it a feature means it can be added or removed later through Add/Remove
+  Programs, which a checkbox on a wizard page cannot.
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="n52 DejaVu"
+           Manufacturer="Shokkstokk"
+           Version="1.0.0"
+           UpgradeCode="6F3A1C08-7B94-4E51-9C2D-0A5E8B41D7F2"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Remapping driver and editor for the Belkin Nostromo SpeedPad n52" />
+
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of n52 DejaVu is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!--
+      The runtime is found by the version of a file rather than a registry key, and that is
+      not fussiness: the key that records it holds one value per patch, named for the patch
+      ("10.0.11"), and MSI can look up a value it can name but cannot enumerate. A file
+      version can be compared. PresentationFramework.dll is the right file to ask, since it
+      is WPF itself - exactly the part the plain runtime leaves out.
+    -->
+    <Property Id="DOTNETDESKTOP10">
+      <DirectorySearch Id="DotnetSharedRoot"
+                       Path="[ProgramFiles64Folder]dotnet\shared\Microsoft.WindowsDesktop.App"
+                       Depth="2">
+        <FileSearch Name="PresentationFramework.dll" MinVersion="10.0.0.0" />
+      </DirectorySearch>
+    </Property>
+
+    <!--
+      Only when installing. An uninstall must never be blocked by a missing prerequisite -
+      that would strand people who removed the runtime first.
+    -->
+    <Launch Condition="Installed OR DOTNETDESKTOP10"
+            Message="n52 DejaVu needs the .NET 10 Desktop Runtime, and it was not found.
+
+Install it from https://dotnet.microsoft.com/download/dotnet/10.0 and run this again. Take the Desktop runtime rather than the plain one: the plain one leaves out the parts a windowed application needs.
+
+The setup.exe next to this .msi installs it for you." />
+
+    <!-- ================================ Layout ================================ -->
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="n52 DejaVu">
+        <Directory Id="DRIVERFOLDER" Name="driver" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="APPMENUFOLDER" Name="n52 DejaVu" />
+    </StandardDirectory>
+
+    <!-- ================================ Payload =============================== -->
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="..\dist\app\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="DriverFiles" Directory="DRIVERFOLDER">
+      <Component>
+        <File Source="..\driver\n52winusb.inf" />
+      </Component>
+      <Component>
+        <File Source="..\driver\install.ps1" />
+      </Component>
+      <Component>
+        <File Source="..\driver\uninstall.ps1" />
+
+        <!--
+          install.ps1 builds and signs n52winusb.cat next to the INF at run time, so this
+          installer never placed it and had no reason to remove it - and one unknown file is
+          enough to keep the driver folder, and therefore its parent, behind after an
+          otherwise spotless uninstall. Measured on a clean VM: registry, driver store and
+          certificate stores all empty, "C:\Program Files\n52 DejaVu" still on disk.
+
+          Declared here rather than deleted by uninstall.ps1, so it holds even when the
+          catalog came from a hand-run of install.ps1. A file that is not there is not an
+          error for RemoveFile.
+        -->
+        <RemoveFile Id="RemoveCatalog" Name="n52winusb.cat" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="AppShortcuts" Directory="APPMENUFOLDER">
+      <Component Id="MainShortcuts">
+        <Shortcut Id="StartApp" Name="n52 DejaVu" Description="Set up and control your n52"
+                  Target="[INSTALLFOLDER]n52dejavu.exe" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="StartGuide" Name="User guide" Target="[INSTALLFOLDER]help.md" />
+        <RemoveFolder Id="RemoveAppMenu" On="uninstall" />
+        <RegistryValue Root="HKLM" Key="Software\Shokkstokk\n52 DejaVu"
+                       Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      These live with the driver feature: without it there is no driver folder for them to
+      point at, and nothing for them to undo.
+    -->
+    <ComponentGroup Id="PadShortcuts" Directory="APPMENUFOLDER">
+      <Component Id="PadSetupShortcuts">
+        <Shortcut Id="PadSetup" Name="Set up the pad"
+                  Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe"
+                  Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]driver\install.ps1&quot;" />
+        <Shortcut Id="PadUndo" Name="Undo pad setup"
+                  Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe"
+                  Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]driver\uninstall.ps1&quot;" />
+        <RegistryValue Root="HKLM" Key="Software\Shokkstokk\n52 DejaVu"
+                       Name="PadSetup" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ================================ Features ============================== -->
+
+    <Feature Id="Main" Title="n52 DejaVu" Level="1" AllowAbsent="no"
+             Description="The software: the editor, the engine and the user guide.">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="AppShortcuts" />
+    </Feature>
+
+    <Feature Id="PadSetup" Title="Pad setup" Level="1"
+             Description="Hands the pad's two USB interfaces to Windows' own winusb.sys, which is what lets this software read the device at all. Without it the pad stays an ordinary keyboard and nothing you assign will do anything. Removing this, or uninstalling, gives the pad back.">
+      <ComponentGroupRef Id="DriverFiles" />
+      <ComponentGroupRef Id="PadShortcuts" />
+    </Feature>
+
+    <!-- ============================== The hand-over =========================== -->
+
+    <!--
+      Deferred, because it changes the machine, and deferred actions cannot read properties -
+      so the command line is baked into the action's own property first. Impersonate="no"
+      because it needs the elevated token, not the installing user's.
+
+      Return="ignore" on both: a pad that failed to rebind is not a reason to roll back an
+      otherwise good installation. The software says plainly when it cannot reach the device,
+      and "Set up the pad" is in the Start Menu to try again.
+    -->
+    <SetProperty Id="RebindPad" Sequence="execute" Before="RebindPad"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]driver\install.ps1&quot;" />
+
+    <CustomAction Id="RebindPad" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec64"
+                  Execute="deferred" Return="ignore" Impersonate="no" />
+
+    <SetProperty Id="ReleasePad" Sequence="execute" Before="ReleasePad"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]driver\uninstall.ps1&quot;" />
+
+    <CustomAction Id="ReleasePad" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec64"
+                  Execute="deferred" Return="ignore" Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <!-- &PadSetup=3: the feature is being installed on this transaction. -->
+      <Custom Action="RebindPad" After="InstallFiles" Condition="&amp;PadSetup=3" />
+
+      <!--
+        Before RemoveFiles, or the script would be deleted before it could run. The condition
+        is "was installed and is now going away", which covers both a full uninstall and
+        turning the feature off through Add/Remove Programs.
+      -->
+      <Custom Action="ReleasePad" Before="RemoveFiles" Condition="(&amp;PadSetup=2) AND (!PadSetup=3)" />
+    </InstallExecuteSequence>
+
+    <!-- ================================== UI ================================== -->
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="..\dist\LICENSE.rtf" />
+
+  </Package>
+</Wix>

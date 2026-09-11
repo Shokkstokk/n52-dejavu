@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>DejaVu.RawProbe</RootNamespace>
+    <AssemblyName>DejaVu.RawProbe</AssemblyName>
+
+    <!-- Raw Input is delivered to a window, and the checklist is a window anyway. -->
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The probe checks a unit against PadLayout, so it reads the model rather than
+         carrying a second copy of the scancode table that could drift out of step with it. -->
+    <ProjectReference Include="../../src/DejaVu.Core/DejaVu.Core.csproj" />
+  </ItemGroup>
+
+</Project>

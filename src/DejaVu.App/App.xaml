@@ -1,0 +1,661 @@
+﻿<Application x:Class="DejaVu.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <ResourceDictionary>
+
+    <ResourceDictionary.MergedDictionaries>
+      <!-- One shape per input, traced from the artwork and keyed by button id. -->
+      <ResourceDictionary Source="Assets/DeviceGeometry.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- The nine themeable brushes are merged at startup by Theme.Load, not here, so that
+         changing theme is a matter of swapping one dictionary rather than rebuilding the
+         window. Everything below refers to them with DynamicResource for the same reason:
+         a StaticResource is resolved once and would not follow the swap. -->
+
+    <!-- The four status brushes, and the reason they are HERE rather than in a theme file.
+
+         These do not describe how the application looks. They describe whether the pad is
+         live. Note where the split falls: a selected or pressed control is interface feedback
+         and wears the themeable Highlight, while these four report the hardware. Green-means-running is the entire reason the engine state is drawn louder than
+         everything around it, and a theme that recolored it would not be restyling the
+         window, it would be deleting the one piece of information on it worth interrupting
+         for. Same standing as the three LED colors in MainWindow and StatusIcon, which are red,
+         green and blue because the pad's lamps are.
+
+         Declared directly on this dictionary rather than in a merged one, which is what makes
+         that a rule instead of a convention: WPF resolves a dictionary's own entries before any
+         of its merged dictionaries, so a theme file listing these keys cannot take effect. The
+         boundary holds even if someone adds them to a theme by mistake. -->
+    <SolidColorBrush x:Key="Active" Color="#3DD68C" />
+    <SolidColorBrush x:Key="Inactive" Color="#E05252" />
+
+    <!-- Louder than the rest of the palette, deliberately. At ordinary weights this read as
+         caption text and got missed. Separate from Active/Inactive, which make the quieter
+         statement that a profile or a theme is the one in use. -->
+    <SolidColorBrush x:Key="EngineOn" Color="#3BFF8F" />
+    <SolidColorBrush x:Key="EngineOff" Color="#FF4A4A" />
+
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+    </Style>
+
+    <Style TargetType="Label">
+      <Setter Property="Foreground" Value="{DynamicResource TextDim}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Padding" Value="0,4,0,2" />
+    </Style>
+
+    <Style TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource Surface}" />
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="4">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Tabs. The default WPF template is the Windows light theme, which looks pasted on
+         against the dark shell. -->
+    <!-- Templated so something can ride the header row beside the tabs: whatever is put in
+         the TabControl's Tag is presented at the right-hand end of it. That is how the eight
+         keymap buttons sit level with the tabs rather than at the foot of one page.
+
+         Tag rather than an attached property because there is exactly one such thing and one
+         TabControl in this application; a dependency property for a single use would be more
+         machinery than the problem has.
+
+         The TabPanel is docked first on purpose. DockPanel reserves space in child order, so
+         the tabs take what they need and the keymaps get the remainder - which means a window
+         too narrow for both wraps the keymaps onto a second line instead of cutting tabs off
+         the side. Both are bottom-aligned so they share a baseline when that happens. -->
+    <Style TargetType="TabControl">
+      <Setter Property="Background" Value="{DynamicResource Background}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="0,0,0,0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabControl">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+
+              <DockPanel Grid.Row="0" LastChildFill="False" Panel.ZIndex="1">
+                <TabPanel DockPanel.Dock="Left" IsItemsHost="True"
+                          VerticalAlignment="Bottom" KeyboardNavigation.TabIndex="1" />
+                <ContentPresenter DockPanel.Dock="Right" Content="{TemplateBinding Tag}"
+                                  VerticalAlignment="Bottom" />
+              </DockPanel>
+
+              <Border Grid.Row="1" Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      Padding="{TemplateBinding Padding}">
+                <ContentPresenter ContentSource="SelectedContent" />
+              </Border>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="TabItem">
+      <Setter Property="Foreground" Value="{DynamicResource TextDim}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontEmphasis}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabItem">
+            <!-- The hand belongs on this Border, NOT on the TabItem as a style setter.
+                 QueryCursor is a bubbling event, and a tab page's content is presented by
+                 the TabControl while remaining the TabItem's logical child - so the route
+                 from anything on the page passes through the TabItem on its way out. A
+                 Cursor set there answered for the whole page: every pane, every label, every
+                 empty gap showed a hand, which says "click me" about three quarters of a
+                 window that cannot be clicked. Set on the header's own Border it applies to
+                 the header and nothing else. -->
+            <Border x:Name="frame" Background="{DynamicResource Surface}"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1,1,1,0"
+                    CornerRadius="4,4,0,0" Margin="0,0,2,0" Padding="20,9"
+                    Cursor="Hand">
+              <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Background}" />
+                <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                <Setter Property="Foreground" Value="{DynamicResource Text}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Mode selector buttons. These are indicators as much as controls: the border and
+         the lamp say which mode is live, so a hover fill only competes with that signal.
+         Same template as a normal button, minus the IsMouseOver trigger. -->
+    <Style x:Key="ModeButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="4">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- The default ComboBox and ListBox templates follow the Windows light theme, which
+         makes their text unreadable on a dark background. Redefined here in full. -->
+
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="9,6" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    BorderBrush="Transparent" BorderThickness="1"
+                    Padding="{TemplateBinding Padding}" CornerRadius="3" Margin="3,1">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <!-- IsHighlighted is WPF's name for the item under the mouse, or the one the
+                   arrow keys have moved to. It used to paint that item with the accent, which
+                   made a dropdown the one place in the application where pointing at something
+                   produced an accent-colored fill - everywhere else that means Hover, and the
+                   accent means structure: pane frames, the device, the keymap in use. -->
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+              </Trigger>
+              <!-- Last, so a selected item keeps its mark while the mouse passes over it. -->
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+                <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Highlight}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="Background" Value="{DynamicResource Background}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="Padding" Value="9,6" />
+      <Setter Property="MaxDropDownHeight" Value="420" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton Focusable="False" ClickMode="Press"
+                            IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="frame" Background="{DynamicResource Background}"
+                            BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4">
+                      <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                            Data="M 0 0 L 4 4 L 8 0 Z" Fill="{DynamicResource TextDim}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+
+              <ContentPresenter Margin="{TemplateBinding Padding}" IsHitTestVisible="False"
+                                VerticalAlignment="Center" HorizontalAlignment="Left"
+                                Content="{TemplateBinding SelectionBoxItem}"
+                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                TextElement.Foreground="{TemplateBinding Foreground}" />
+
+              <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False"
+                     IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade">
+                <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}"
+                        BorderThickness="1" CornerRadius="4" Padding="2"
+                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="False">
+                    <ItemsPresenter />
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="7,5" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <!-- Outlined like the assignment rows, and for the same reasons: every entry is
+               bordered so the list reads as a column of separate things, and the border is
+               always present so selecting one cannot nudge the rows below it.
+
+               Selection is Active - the color a control lights up in when it is pressed -
+               rather than the accent. The accent now frames every pane and draws the device,
+               so a selection wearing it would be one more accent-colored line among many. -->
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                    Padding="{TemplateBinding Padding}" CornerRadius="3" Margin="2,1">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+              </Trigger>
+              <!-- Last, so it wins over the hover fill on a selected row. -->
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+                <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Highlight}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Category header in the key list. -->
+    <Style x:Key="GroupHeader" TargetType="GroupItem">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="GroupItem">
+            <StackPanel>
+              <TextBlock Text="{Binding Name}" FontSize="{DynamicResource FontMarker}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource TextDim}" Margin="9,8,0,3" />
+              <ItemsPresenter />
+            </StackPanel>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Grouping for the assignment dropdowns. A GroupStyle is not a Freezable, so it
+         cannot be shared implicitly the way a Style is - it has to be handed to each
+         ComboBox explicitly, which is what BuildAssignRows does. -->
+    <GroupStyle x:Key="ChoiceGroupStyle" ContainerStyle="{StaticResource GroupHeader}" />
+
+
+    <Style TargetType="ToolTip">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToolTip">
+            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}"
+                    BorderThickness="1" CornerRadius="4" Padding="9,6" MaxWidth="320">
+              <ContentPresenter />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Templated, not merely restyled, and that distinction is the whole point.
+
+         Setting BorderBrush on the stock template is not enough: the template WPF supplies has
+         mouse-over and focus triggers of its own, wearing the Windows system colors, and they
+         win the moment either state is entered. So a field styled but not templated sat there
+         in the theme's colors until it was pointed at, then flashed the system blue - a color
+         belonging to no palette this application has ever had. -->
+    <Style TargetType="TextBox">
+      <Setter Property="Background" Value="{DynamicResource Background}" />
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="CaretBrush" Value="{DynamicResource Text}" />
+      <Setter Property="SelectionBrush" Value="{DynamicResource Highlight}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="4">
+              <!-- The name is required: TextBox finds its text host by it, and a template
+                   without one renders an empty box that cannot be typed into. The scrollbar
+                   bindings carry the multi-line fields - the macro text box sets them. -->
+              <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                            Margin="{TemplateBinding Padding}"
+                            VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"
+                            HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Accent}" />
+              </Trigger>
+              <!-- Last, and Highlight rather than Accent: a focused field is the thing being
+                   edited, which is exactly what Highlight means everywhere else. -->
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="frame" Property="BorderBrush" Value="{DynamicResource Highlight}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- The stock checkbox is a white box with a dark check mark and a blue hover glow: three colors
+         from the Windows light theme, and the last part of the window that ignored the palette
+         entirely. Drawn here instead, from the same brushes as everything else.
+
+         The check mark is a Path rather than a glyph so it is a shape that can be given any brush,
+         and so it scales with the box rather than with a font. -->
+    <!-- Keyboard focus, shown as an overlay ring rather than by recoloring the control.
+         Neutral on purpose: focus is not selection, and the palette's colors already mean
+         particular things. Drawing focus in Highlight said "this is the control you are
+         editing" about whichever control the keyboard happened to be resting on - and since
+         WPF moves focus into a tab's content when that tab is selected, the first checkbox in the
+         assignment list claimed to be selected every time the Assign page was revisited. -->
+    <Style x:Key="FocusRing">
+      <Setter Property="Control.Template">
+        <Setter.Value>
+          <ControlTemplate>
+            <Rectangle Margin="-3" StrokeThickness="1" StrokeDashArray="2 2"
+                       Stroke="{DynamicResource TextDim}" SnapsToDevicePixels="True" />
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <!-- Transparent, not unset: a panel with no background is not hit-testable, and
+                 the gap between the box and its label would stop being clickable. -->
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+              <Border x:Name="box" Width="15" Height="15" CornerRadius="3"
+                      VerticalAlignment="Center"
+                      Background="{DynamicResource Background}"
+                      BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                <Path x:Name="check" Visibility="Collapsed"
+                      Data="M 2.5 6.5 L 5.5 9.5 L 10.5 3"
+                      Stroke="{DynamicResource Accent}" StrokeThickness="2"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+              </Border>
+              <ContentPresenter x:Name="label" Margin="7,0,0,0" VerticalAlignment="Center"
+                                RecognizesAccessKey="True" />
+            </StackPanel>
+            <ControlTemplate.Triggers>
+              <!-- The assignment rows use a bare checkbox with no label. Without this the empty
+                   content presenter would still contribute its margin and push every row's
+                   name seven pixels right. -->
+              <Trigger Property="HasContent" Value="False">
+                <Setter TargetName="label" Property="Margin" Value="0" />
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="check" Property="Visibility" Value="Visible" />
+                <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="box" Property="Background" Value="{DynamicResource Hover}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Scrollbars. Thin, no arrow buttons, no track: the modern shape, and the one that does
+         not put two stepper buttons of Windows gray at the ends of every list.
+
+         The page areas either side of the thumb are transparent RepeatButtons rather than
+         nothing at all, because that is what makes clicking above or below the thumb page the
+         list. Drawing them as empty borders keeps the behavior and hides the furniture. -->
+    <Style x:Key="ScrollPage" TargetType="RepeatButton">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsTabStop" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RepeatButton">
+            <Border Background="Transparent" />
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="ScrollThumb" TargetType="Thumb">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Thumb">
+            <Border x:Name="frame" Background="{DynamicResource Line}" CornerRadius="3" Margin="2" />
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource TextDim}" />
+              </Trigger>
+              <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Accent}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid Background="{TemplateBinding Background}">
+              <!-- IsDirectionReversed, because a vertical track's value grows downward while
+                   its layout grows upward. Without it the thumb travels the wrong way. -->
+              <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageUpCommand" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Style="{StaticResource ScrollThumb}" MinHeight="26" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageDownCommand" />
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto" />
+          <Setter Property="Height" Value="10" />
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Grid Background="{TemplateBinding Background}">
+                  <Track x:Name="PART_Track">
+                    <Track.DecreaseRepeatButton>
+                      <RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageLeftCommand" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                      <Thumb Style="{StaticResource ScrollThumb}" MinWidth="26" />
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                      <RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageRightCommand" />
+                    </Track.IncreaseRepeatButton>
+                  </Track>
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Templated for one specific reason. WPF's stock ListBox template carries an
+         IsEnabled=false trigger that replaces the background with SystemColors.ControlBrush -
+         #F0F0F0, a near-white belonging to the Windows light theme. Setting Background on the
+         style does not stop it, because the trigger is inside the template the style never
+         replaced. So the Steps list, which is disabled whenever no macro is selected, turned
+         into a white slab in the middle of a dark window.
+
+         Disabled is shown by dimming instead, the same way every other control here does it. -->
+    <Style TargetType="ListBox">
+      <Setter Property="Background" Value="{DynamicResource Background}" />
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBox">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="4" Padding="1">
+              <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                <ItemsPresenter />
+              </ScrollViewer>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- The right-click menu on an assignment row.
+
+         Templated, not merely brushed. A ContextMenu with only its colors set keeps the
+         template Windows supplies, which draws a light gray slab and takes its item colors
+         from the system - so the menu arrived as a pale rectangle with the dark theme's
+         near-white text on it, effectively blank. Same trap as TextBox on hover and ListBox
+         when disabled; see CLAUDE.md. -->
+    <Style TargetType="ContextMenu">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="Background" Value="{DynamicResource Surface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ContextMenu">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="1" CornerRadius="4" Padding="3">
+              <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="MenuItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="MenuItem">
+            <Border x:Name="frame" Background="{TemplateBinding Background}"
+                    CornerRadius="3" Padding="{TemplateBinding Padding}" Margin="1">
+              <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <!-- The item under the pointer or the keyboard. Hover, not the accent: the
+                   accent frames panes and draws the device, and pointing at a menu entry is
+                   the same gesture as pointing at a dropdown entry. -->
+              <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="frame" Property="Background" Value="{DynamicResource Hover}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Keyed on SeparatorStyleKey rather than by type: inside a menu WPF looks a separator
+         up by that key and would otherwise keep the system-colored one. -->
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Separator">
+            <Border Height="1" Margin="8,4" Background="{DynamicResource Line}" />
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

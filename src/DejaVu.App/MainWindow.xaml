@@ -1,0 +1,795 @@
+﻿<Window x:Class="DejaVu.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:DejaVu.App.Controls"
+        Title="n52 DejaVu" Height="784" Width="1100"
+        MinHeight="620" MinWidth="1000"
+        Icon="Assets/n52dejavu.ico"
+        Background="{DynamicResource Background}"
+        WindowStartupLocation="CenterScreen"
+        FontSize="{DynamicResource FontBody}">
+
+  <!--
+    Structure follows Razer's configurator: pages across the top, the device and its
+    assignments on the first page, and the eight keymaps beside the tabs.
+
+    The device sits inside a Viewbox, so the artwork and all 27 slot overlays scale together
+    with the window. That is what keeps the window resizable: an earlier build pinned the
+    window to the artwork's native size to keep it pixel-sharp, which made it sharp and
+    unusable. Scaling costs some crispness above native size — line art degrades gently —
+    and buys back a window the user can actually size to their screen.
+  -->
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="{DynamicResource Background}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <!-- Three groups, left to right: what the engine is doing, which profile is being
+           edited, and the options. Laid out as a Grid rather than a DockPanel so the middle
+           genuinely centers - docking put the profile box hard against the engine controls
+           and flung the state text to the far edge, so the two halves of one idea sat at
+           opposite ends of the window. -->
+      <Grid Margin="12,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- What the pad is doing. There is nothing to press: the application running is
+             the engine running, and a pad that is not there connects itself when it appears. -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal">
+          <TextBlock x:Name="TxtEngineState" VerticalAlignment="Center" Margin="2,0,0,0" />
+        </StackPanel>
+
+        <!-- Which profile is being edited. It lives on the toolbar rather than on the assign
+             page because it governs every page: the keymaps, the processes and the macros all
+             belong to one profile, and having to change tabs to see which one was open made it
+             easy to edit the wrong thing. Mirrors the list on the profiles tab, which stays the
+             place to add, rename and delete them. -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
+          <TextBlock VerticalAlignment="Center" Margin="0,0,6,0"
+                     Foreground="{DynamicResource TextDim}" Text="{DynamicResource ProfileLabel}" />
+          <!-- An explicit ItemTemplate rather than DisplayMemberPath. With DisplayMemberPath
+               the dropdown items render correctly but SelectionBoxItemTemplate stays null, so
+               the ComboBox template ContentPresenter has nothing to render the closed box with
+               and falls back to ToString() - which prints the type name. -->
+          <ComboBox x:Name="CboProfile" VerticalAlignment="Center"
+                    MinWidth="170" SelectionChanged="ProfileChosen">
+            <ComboBox.ItemTemplate>
+              <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <!-- One button rather than a row of checkboxes. Four of them across the toolbar
+             read as four things to do, when they are four things that are already decided and
+             rarely revisited - and they grew every time a setting was added. -->
+        <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="BtnOptions" Content="{DynamicResource OptionsLabel}" MinWidth="104"
+                  Click="OptionsToggle" />
+
+          <!-- A Popup and not a MenuItem list. The MenuItem template in App.xaml draws its
+               Header and nothing else, so a checkable item would toggle invisibly - and
+               widening that template would reach the row menus and the tray menu, which do
+               not want a check column. The checkboxes here are the same controls that were on
+               the toolbar, with the same handlers and the same style.
+
+               FontSize and FontFamily are stated on the frame because a Popup is not inside
+               the window's visual tree and inherits neither. See CLAUDE.md. -->
+          <Popup x:Name="PopOptions" StaysOpen="True" Placement="Bottom"
+                 PlacementTarget="{Binding ElementName=BtnOptions}" VerticalOffset="5"
+                 AllowsTransparency="True" PopupAnimation="Fade">
+            <Border x:Name="OptionsPanel" Padding="16,14"
+                    Background="{DynamicResource Surface}"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4"
+                    TextElement.FontFamily="{DynamicResource AppFontFamily}"
+                    TextElement.FontSize="{DynamicResource FontBody}">
+              <StackPanel>
+                <CheckBox x:Name="ChkAutoSwitch" Content="{DynamicResource AutoSwitch}"
+                          Checked="OptionsChanged" Unchecked="OptionsChanged" />
+                <CheckBox x:Name="ChkStartWithWindows" Margin="0,14,0,0"
+                          Content="{DynamicResource StartWithWindows}"
+                          Checked="OptionsChanged" Unchecked="OptionsChanged" />
+                <CheckBox x:Name="ChkLockWindowSize" Margin="0,14,0,0"
+                          Content="{DynamicResource LockWindowSize}"
+                          Checked="OptionsChanged" Unchecked="OptionsChanged">
+                  <CheckBox.ToolTip>
+                    <ToolTip MaxWidth="320">
+                      <TextBlock Text="{DynamicResource LockWindowSizeTip}" TextWrapping="Wrap" />
+                    </ToolTip>
+                  </CheckBox.ToolTip>
+                </CheckBox>
+
+                <!-- Below the line because it is not a preference: it decides what the engine
+                     can reach, and turning it on or off restarts the application. -->
+                <Border Height="1" Margin="0,14,0,0" Background="{DynamicResource Line}" />
+
+                <CheckBox x:Name="ChkRunElevated" Margin="0,14,0,0"
+                          Content="{DynamicResource RunElevated}" Click="ElevationChanged">
+                  <CheckBox.ToolTip>
+                    <ToolTip MaxWidth="320">
+                      <TextBlock Text="{DynamicResource RunElevatedTip}" TextWrapping="Wrap" />
+                    </ToolTip>
+                  </CheckBox.ToolTip>
+                </CheckBox>
+              </StackPanel>
+            </Border>
+          </Popup>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="Tabs" Grid.Row="1" Margin="12,10,12,0" BorderThickness="0"
+                SelectionChanged="TabChanged">
+
+      <!-- The eight keymaps, level with the tabs and always on screen.
+
+           They used to sit at the foot of the assign page, which put the pad's live state
+           inside one tab: opening Appearance meant losing sight of which keymap the device
+           was actually in. It was never a setting of that page - the mode shown here mirrors
+           the engine's, and the pad is in it whatever is on screen - so it belongs beside the
+           tabs, at the same standing as the profile box on the toolbar.
+
+           Presented by the TabControl template, which reads this from Tag. -->
+      <TabControl.Tag>
+        <Border x:Name="PanelKeymaps" Background="{DynamicResource Surface}"
+                BorderBrush="{DynamicResource Accent}" BorderThickness="1"
+                CornerRadius="4" Padding="8,6,2,2" Margin="16,0,0,4">
+          <WrapPanel x:Name="PanelModes" Orientation="Horizontal" />
+        </Border>
+      </TabControl.Tag>
+
+      <!-- ============================ ASSIGN ============================ -->
+      <TabItem Header="{DynamicResource TabAssign}">
+        <Grid Margin="0,12,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="304" />
+            <ColumnDefinition Width="*" MinWidth="300" />
+            <ColumnDefinition Width="Auto" MinWidth="304" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <!-- The keypad's fourteen keys, down the left. Rows are built in code from
+               PadLayout, so the device model stays the single source of truth. -->
+          <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="PanelLeft" Margin="8" />
+            </ScrollViewer>
+          </Border>
+
+          <!-- The device. The Viewbox scales the artwork and every control shape on it as
+               one piece, so shapes stay glued to the drawing at any window size. The canvas
+               is the artwork's own 896x1200 coordinate space, which is also the space the
+               traced geometry is expressed in - so nothing needs converting.
+
+               Nothing is written onto the drawing any more: the assignments live in the
+               lists either side, and the picture is left as drawn. Clicking a control still
+               selects it, which scrolls its row into view and highlights it. -->
+          <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1"
+                  Margin="10,0,10,0">
+            <Viewbox Stretch="Uniform" StretchDirection="Both">
+              <Canvas x:Name="DeviceCanvas" Width="896" Height="1200">
+                <!-- The artwork, drawn in the accent rather than in its own color.
+
+                     device.png is not a picture of the pad, it is a line drawing of one: 93%
+                     of it is transparent and every fully opaque pixel is the same flat
+                     #E0E0E0. So the file carries shape and nothing else, and the color can
+                     come from the palette.
+
+                     A filled Rectangle wearing the image as an OpacityMask, rather than an
+                     Image with an effect over it. An OpacityMask reads only the brush's alpha,
+                     which is exactly what the file has to offer - so the drawing is recolored
+                     rather than tinted, the antialiasing along every stroke survives, and the
+                     fill is an ordinary DynamicResource that follows a theme change like
+                     everything else. No per-theme copy of the artwork, and no filter look. -->
+                <Rectangle Width="896" Height="1200" Fill="{DynamicResource Accent}">
+                  <Rectangle.OpacityMask>
+                    <ImageBrush ImageSource="Assets/device.png" />
+                  </Rectangle.OpacityMask>
+                </Rectangle>
+              </Canvas>
+            </Viewbox>
+          </Border>
+
+          <!-- Everything that is not a keypad key, down the right: the thumb bar, the round
+               button, the wheel and the eight pad directions. -->
+          <Border Grid.Row="0" Grid.Column="2" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="PanelRight" Margin="8" />
+            </ScrollViewer>
+          </Border>
+
+          <!-- Extra settings for the assignment being edited.
+               Most assignments are finished the moment they are picked from a row's dropdown
+               and this strip stays hidden. It appears only for the ones that cannot be
+               expressed as a single choice: the modifiers on a key, the text to type, the
+               program to launch, the steps of a macro. -->
+          <Border x:Name="PanelDetail" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                  Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Accent}"
+                  BorderThickness="1" Margin="0,10,0,0" Visibility="Collapsed">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="260">
+              <StackPanel Margin="12,10,12,12">
+                <DockPanel Margin="0,0,0,8">
+                  <TextBlock x:Name="TxtSignal" DockPanel.Dock="Right" VerticalAlignment="Center"
+                             Foreground="{DynamicResource TextDim}" FontSize="{DynamicResource FontSecondary}" />
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="TxtSettingsPrefix" Text="{DynamicResource CurrentSettingsFor}"
+                               FontSize="{DynamicResource FontHeading}" Foreground="{DynamicResource TextDim}" />
+                    <TextBlock x:Name="TxtSelectedInput" Text="{DynamicResource NoInputSelected}"
+                               FontSize="{DynamicResource FontHeading}" FontWeight="SemiBold" Margin="6,0,0,0" />
+                  </StackPanel>
+                </DockPanel>
+
+                <!-- The controller-default profile. It is read-only, so the strip says so
+                     rather than offering an editor whose every control would be dead. -->
+                <TextBlock x:Name="TxtLockedProfile" Visibility="Collapsed" TextWrapping="Wrap"
+                           MaxWidth="620" HorizontalAlignment="Left" FontSize="{DynamicResource FontSecondary}"
+                           Foreground="{DynamicResource TextDim}"
+                           Text="{DynamicResource LockedProfileNote}" />
+
+                <!-- Several controls selected. The strip becomes this instead of the editor:
+                     no assignment can describe five rows at once, but "switch these off" and
+                     "put these back" can. The names are listed rather than counted, so what
+                     the buttons are about to act on is on screen before they are pressed -
+                     which is what makes a confirmation dialog unnecessary here. -->
+                <StackPanel x:Name="PanelBulk" Visibility="Collapsed">
+                  <TextBlock x:Name="TxtBulkNames" TextWrapping="Wrap" Margin="0,0,0,12"
+                             Foreground="{DynamicResource TextDim}" />
+                  <WrapPanel>
+                    <Button Content="{DynamicResource BulkEnable}" Click="BulkEnableClick"
+                            Margin="0,0,8,0" MinWidth="96" />
+                    <Button Content="{DynamicResource BulkDisable}" Click="BulkDisableClick"
+                            Margin="0,0,8,0" MinWidth="96" />
+                    <Button Content="{DynamicResource MenuReset}" Click="BulkResetClick" />
+                  </WrapPanel>
+                </StackPanel>
+
+                <WrapPanel x:Name="PanelEditor" IsEnabled="False" Orientation="Horizontal">
+
+                  <!-- Key: the dropdown already chose which key, so only the modifiers and
+                       the press-to-capture shortcut belong here. -->
+                  <StackPanel x:Name="PanKey" Visibility="Collapsed" Margin="0,0,24,0" MinWidth="240">
+                    <Label Content="{DynamicResource KeyToSend}" />
+                    <ComboBox x:Name="CboKey" SelectionChanged="KeyChosen">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                      <ComboBox.GroupStyle>
+                        <GroupStyle ContainerStyle="{StaticResource GroupHeader}" />
+                      </ComboBox.GroupStyle>
+                    </ComboBox>
+                    <Button Content="{DynamicResource OrPressKey}" Margin="0,6,0,0" Click="CaptureKey" />
+
+                    <!-- Labeled, because unlabeled they read as options belonging to the
+                         capture button above rather than as the way to build a combination,
+                         and someone looking for "how do I map Ctrl+C" walks straight past
+                         four bare checkboxes. -->
+                    <StackPanel Margin="0,4,0,0">
+                      <StackPanel.ToolTip>
+                        <ToolTip MaxWidth="360">
+                          <TextBlock Text="{DynamicResource ModifiersTip}" TextWrapping="Wrap" />
+                        </ToolTip>
+                      </StackPanel.ToolTip>
+                      <Label Content="{DynamicResource ModifiersLabel}" />
+                      <WrapPanel Margin="0,2,0,0">
+                        <CheckBox x:Name="ChkCtrl" Content="Ctrl" Margin="0,0,12,0" Checked="FieldChanged" Unchecked="FieldChanged" />
+                        <CheckBox x:Name="ChkShift" Content="Shift" Margin="0,0,12,0" Checked="FieldChanged" Unchecked="FieldChanged" />
+                        <CheckBox x:Name="ChkAlt" Content="Alt" Margin="0,0,12,0" Checked="FieldChanged" Unchecked="FieldChanged" />
+                        <CheckBox x:Name="ChkWin" Content="Win" Checked="FieldChanged" Unchecked="FieldChanged" />
+                      </WrapPanel>
+                    </StackPanel>
+                  </StackPanel>
+
+                  <!-- Text -->
+                  <!-- The one panel that takes the whole strip. PanelEditor is a WrapPanel, so
+                       a child gets the width it asks for and no more - Stretch means nothing
+                       there - and Text was sitting at its 320 minimum with the rest of the
+                       strip empty beside it. Text is also the only panel shown on its own, so
+                       there is nothing for it to crowd. Width is bound rather than set,
+                       because the window is resizable. -->
+
+                  <!-- Launch -->
+                  <StackPanel x:Name="PanLaunch" Visibility="Collapsed" Margin="0,0,24,0" MinWidth="340">
+                    <Label Content="{DynamicResource ProgramPath}" />
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Content="…" Width="32" Margin="6,0,0,0" Click="BrowseForFile" />
+                      <TextBox x:Name="TxtPath" GotFocus="FieldFocused" LostFocus="FieldCommitted"
+                               PreviewKeyDown="FieldKey" />
+                    </DockPanel>
+                    <Label Content="{DynamicResource ArgumentsLabel}" />
+                    <TextBox x:Name="TxtArguments" GotFocus="FieldFocused" LostFocus="FieldCommitted"
+                             PreviewKeyDown="FieldKey" />
+                  </StackPanel>
+
+                  <!-- Wheel -->
+                  <StackPanel x:Name="PanWheel" Visibility="Collapsed" Margin="0,0,24,0" MinWidth="230">
+                    <Label Content="{DynamicResource WheelNotches}" />
+                    <DockPanel>
+                      <!-- The sign used to live in the number, so scrolling down meant typing
+                           a minus and knowing that it meant something. The count is a count
+                           now, and the direction is a choice. -->
+                      <ComboBox x:Name="CboScrollDirection" DockPanel.Dock="Right" Width="96"
+                                Margin="6,0,0,0" SelectionChanged="FieldChanged">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate><TextBlock Text="{Binding Value}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <TextBox x:Name="TxtNotches" GotFocus="FieldFocused" LostFocus="FieldCommitted"
+                               PreviewKeyDown="FieldKey" />
+                    </DockPanel>
+                  </StackPanel>
+
+                  <!-- Mode switch: the dropdown picks the target keymap directly, so only
+                       the cycle/select/hold behavior is left to choose. -->
+                  <StackPanel x:Name="PanMode" Visibility="Collapsed" Margin="0,0,24,0" MinWidth="260">
+                    <Label Content="{DynamicResource ModeSwitchLabel}" />
+                    <ComboBox x:Name="CboModeSwitch" SelectionChanged="FieldChanged">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding Value}" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <StackPanel x:Name="PanModeTarget" Margin="0,8,0,0">
+                      <Label Content="{DynamicResource ModeTargetLabel}" />
+                      <ComboBox x:Name="CboModeTarget" SelectionChanged="FieldChanged">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate><TextBlock Text="{Binding Value}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource ModeSwitchHelp}" TextWrapping="Wrap" FontSize="{DynamicResource FontSecondary}"
+                               MaxWidth="260" Foreground="{DynamicResource TextDim}" Margin="0,8,0,0" />
+                  </StackPanel>
+
+                  <!-- Macro: which one, and how this button plays it. The macro itself is
+                       built on the Macros tab; only the choice is made here. A list rather
+                       than entries in the row's dropdown, because a user with forty macros
+                       would otherwise be back to scrolling a dropdown of forty things -
+                       which is the problem that removed the key catalog from it. -->
+                  <StackPanel x:Name="PanMacro" Visibility="Collapsed" MinWidth="300">
+                    <Label Content="{DynamicResource ChooseMacro}" />
+                    <ListBox x:Name="LstBoundMacro" Height="118" MinWidth="280"
+                             SelectionChanged="BoundMacroChosen">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock x:Name="TxtNoMacros" Text="{DynamicResource NoMacrosYet}"
+                               Visibility="Collapsed" TextWrapping="Wrap" MaxWidth="280"
+                               FontSize="{DynamicResource FontSecondary}" Foreground="{DynamicResource TextDim}" Margin="0,6,0,0" />
+                  </StackPanel>
+
+                  <!-- Repeat belongs to the binding, not the macro: the same sequence can be
+                       one-shot on one key and looping on another. -->
+                  <StackPanel x:Name="PanMacroRepeat" Visibility="Collapsed" Margin="24,0,0,0" MinWidth="170">
+                    <Label Content="{DynamicResource RepeatLabel}" />
+                    <ComboBox x:Name="CboRepeat" SelectionChanged="FieldChanged">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate><TextBlock Text="{Binding Value}" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Label Content="{DynamicResource RepeatDelayLabel}" Margin="0,8,0,0" />
+                    <TextBox x:Name="TxtRepeatDelay" GotFocus="FieldFocused" LostFocus="FieldCommitted"
+                             PreviewKeyDown="FieldKey" />
+                  </StackPanel>
+                </WrapPanel>
+
+                <!-- Outside PanelEditor on purpose. That is a WrapPanel, where a child is
+                     arranged at the width it asks for and Stretch means nothing - so the one
+                     panel that wants the whole strip cannot get it from inside. Here it is a
+                     direct child of a vertical StackPanel and simply fills.
+
+                     It still answers to PanelEditor for whether it is shown at all, and for
+                     whether it can be used: that panel is hidden for a multi-selection and
+                     disabled on the read-only profile, and both have to keep reaching this. -->
+                <StackPanel Visibility="{Binding Visibility, ElementName=PanelEditor}"
+                            IsEnabled="{Binding IsEnabled, ElementName=PanelEditor}">
+                  <StackPanel x:Name="PanText" Visibility="Collapsed"
+                              >
+                    <Label Content="{DynamicResource TextToType}" />
+                    <!-- A preview, not a field. Everything typed here used to be written to
+                         disk letter by letter, with no moment that meant "done" - and a
+                         string long enough to be worth a macro is not comfortable to write in
+                         a box this size anyway. Edit opens the prompt the macro text step
+                         already uses, which is roomier and has an OK and a Cancel. -->
+                    <DockPanel>
+                      <!-- Both ways out of a read-only field. Clearing was possible through
+                           Edit - empty is a real answer there - but nothing said so, and every
+                           other list in the window has a way to remove what is in it. -->
+                      <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="6,0,0,0">
+                        <Button Content="{DynamicResource EditLabel}" Padding="10,4"
+                                Click="EditTextClick" />
+                        <Button Content="{DynamicResource ClearLabel}" Padding="10,4" Margin="0,4,0,0"
+                                Click="ClearTextClick" />
+                      </StackPanel>
+                      <TextBox x:Name="TxtText" AcceptsReturn="True" Height="130" TextWrapping="Wrap"
+                               IsReadOnly="True" Focusable="False" Cursor="Arrow"
+                               VerticalScrollBarVisibility="Auto" />
+                    </DockPanel>
+                    <TextBlock Text="{DynamicResource TextHelp}"
+                               Foreground="{DynamicResource TextDim}" FontSize="{DynamicResource FontSecondary}" TextWrapping="Wrap"
+                               MaxWidth="320" Margin="0,4,0,0" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+
+        </Grid>
+      </TabItem>
+
+      <!-- =========================== PROFILES =========================== -->
+      <TabItem Header="{DynamicResource TabProfiles}">
+        <Grid Margin="0,12,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <!-- Framed like the assign and macro pages. This page was left bare when the panes
+               were introduced, so its two halves sat directly on the window background while
+               every other page put them behind a border - which read as an unfinished tab
+               rather than as a deliberate difference. -->
+          <Border Grid.Column="0" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+          <DockPanel Margin="10">
+            <!-- The heading names the library, the button adds to it, and everything that
+                 acts on an entry that already exists is on that entry's own menu. All three
+                 library pages are built this way; see MainWindow.Library.cs for why. -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+              <Button DockPanel.Dock="Right" Content="{DynamicResource NewEntry}" Padding="10,2"
+                      Click="AddProfile" ToolTip="{DynamicResource NewProfile}" />
+              <TextBlock Text="{DynamicResource ProfileListLabel}" FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+            </DockPanel>
+
+            <!-- Transparent and borderless, like the macro list: the pane around it already
+                 supplies the frame, and a second one inside it boxes the list twice. -->
+            <ListBox x:Name="LstProfiles" SelectionChanged="ProfileSelected"
+                     PreviewMouseRightButtonDown="ProfileListRightClick"
+                     PreviewKeyDown="LibraryKeyDown"
+                     Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel>
+                    <!-- Marks the profile the engine is actually using. Any profile can be
+                         edited, so the live one has to be identifiable at a glance. -->
+                    <TextBlock DockPanel.Dock="Right" Text="{DynamicResource LiveProfileMarker}"
+                               Foreground="{DynamicResource Active}" FontSize="{DynamicResource FontMarker}" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibility}}" />
+
+                    <!-- Which one is used when nothing matches. Deliberately NOT in Active:
+                         that color reports what the pad is obeying right now, and this
+                         reports a setting - a rule about later, not a state. Dim text is the
+                         non-color treatment, which also keeps it quieter than LIVE. -->
+                    <TextBlock DockPanel.Dock="Right" Text="{DynamicResource FallbackMarker}"
+                               Foreground="{DynamicResource TextDim}" FontSize="{DynamicResource FontMarker}" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               ToolTip="{DynamicResource FallbackProfileTip}"
+                               Visibility="{Binding IsFallback, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          </Border>
+
+          <Border Grid.Column="1" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1" Margin="10,0,0,0">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14">
+            <!-- Says which entry the pane is about. The name used to be an editable box here,
+                 which made it the one field on the page that saved on every keystroke with no
+                 way back - rename lives on the list's menu now, and this only reports. -->
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{DynamicResource CurrentSettingsFor}"
+                         FontSize="{DynamicResource FontHeading}" Foreground="{DynamicResource TextDim}" />
+              <TextBlock x:Name="TxtProfileHeading" FontSize="{DynamicResource FontHeading}" FontWeight="SemiBold"
+                         Margin="6,0,0,0" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <TextBlock x:Name="TxtLockedProfileNote" Visibility="Collapsed" Margin="0,8,0,0"
+                       TextWrapping="Wrap" FontSize="{DynamicResource FontSecondary}" Foreground="{DynamicResource TextDim}"
+                       Text="{DynamicResource LockedProfileNote}" />
+            <TextBlock Text="{DynamicResource ProfileApps}" Foreground="{DynamicResource TextDim}"
+                       FontSize="{DynamicResource FontSecondary}" Margin="0,20,0,4" TextWrapping="Wrap" />
+            <ListBox x:Name="LstProcesses" Height="150" />
+            <DockPanel Margin="0,6,0,0">
+              <Button DockPanel.Dock="Right" Content="{DynamicResource RemoveAppLabel}"
+                      Margin="4,0,0,0" Click="RemoveProcess"
+                      ToolTip="{DynamicResource RemoveAppTip}" />
+              <Button DockPanel.Dock="Right" Content="{DynamicResource AddAppLabel}"
+                      Margin="4,0,0,0" Click="AddProcess"
+                      ToolTip="{DynamicResource AddAppTip}" />
+              <TextBox x:Name="TxtProcess" ToolTip="{DynamicResource ProcessNameTip}" />
+            </DockPanel>
+
+            <!-- Detection talks back here rather than in a bar at the far corner of the
+                 window, which is where it used to answer and where nobody was looking. -->
+            <TextBlock x:Name="TxtDetect" Margin="0,6,0,0" TextWrapping="Wrap"
+                       FontSize="{DynamicResource FontSecondary}"
+                       Foreground="{DynamicResource TextDim}" />
+            <!-- Two ways to fill the box, because neither covers everything: browsing is
+                 obvious but captures a launcher rather than the game it starts, and
+                 detection catches the real process but needs it to be running. -->
+            <Button Content="{DynamicResource BrowseApp}" Margin="0,8,0,0" Click="BrowseProcess" />
+            <Button Content="{DynamicResource DetectApp}" Margin="0,4,0,0" Click="DetectProcess" />
+          </StackPanel>
+          </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- ============================ MACROS ============================ -->
+      <!-- Macros are built here and nowhere else. They used to be built inside the binding
+           that played them, which gave them no identity: the same sequence on two buttons
+           was two unrelated copies. Here they are named, edited once, and referenced by as
+           many bindings as you like. -->
+      <TabItem Header="{DynamicResource TabMacros}">
+        <Grid Margin="0,12,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <Border Grid.Column="0" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+            <DockPanel Margin="10">
+              <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" Content="{DynamicResource NewEntry}" Padding="10,2"
+                        Click="NewMacroClick" ToolTip="{DynamicResource NewMacroTip}" />
+                <TextBlock Text="{DynamicResource MacroListLabel}" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+              </DockPanel>
+              <ListBox x:Name="LstMacros" SelectionChanged="MacroSelected"
+                       PreviewMouseRightButtonDown="MacroListRightClick"
+                       PreviewKeyDown="LibraryKeyDown"
+                       Background="Transparent" BorderThickness="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <Border Grid.Column="1" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1" Margin="10,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="14">
+
+                <!-- Outside PanelMacroEditor, which is disabled while nothing is selected -
+                     the state an empty library starts in. This has to stay readable there,
+                     because it is what says the library is empty rather than broken. -->
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{DynamicResource CurrentSettingsFor}"
+                             FontSize="{DynamicResource FontHeading}" Foreground="{DynamicResource TextDim}" />
+                  <TextBlock x:Name="TxtMacroHeading" FontSize="{DynamicResource FontHeading}" FontWeight="SemiBold"
+                             Margin="6,0,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+              <StackPanel x:Name="PanelMacroEditor" IsEnabled="False">
+                <Label Content="{DynamicResource StepsLabel}" Margin="0,12,0,0" />
+                <ListBox x:Name="LstSteps" Height="240" />
+                <!-- Reordering first, then the four that add a step, then Delete. Named
+                     rather than drawn as arrows: two glyphs among eight worded buttons read as
+                     decoration, and nothing said which list they moved things in. -->
+                <WrapPanel Margin="0,8,0,0">
+                  <Button Content="{DynamicResource MoveStepUp}" Margin="0,0,4,4" Click="MoveStepUp" />
+                  <Button Content="{DynamicResource MoveStepDown}" Margin="0,0,4,4" Click="MoveStepDown" />
+                  <Button Content="{DynamicResource AddKeyStep}" Margin="0,0,4,4" Click="AddKeyStepClick" />
+                  <Button Content="{DynamicResource AddHoldStep}" Margin="0,0,4,4" Click="AddHoldStepClick"
+                          ToolTip="{DynamicResource HoldStepTip}" />
+                  <Button Content="{DynamicResource AddReleaseStep}" Margin="0,0,4,4" Click="AddReleaseStepClick"
+                          ToolTip="{DynamicResource ReleaseStepTip}" />
+                  <Button Content="{DynamicResource AddTextStep}" Margin="0,0,4,4" Click="AddTextStepClick" />
+                  <Button Content="{DynamicResource AddClickStep}" Margin="0,0,4,4" Click="AddClickStepClick" />
+                  <Button Content="{DynamicResource AddDelayStep}" Margin="0,0,4,4" Click="AddDelayStepClick" />
+                  <Button Content="{DynamicResource AddEnterStep}" Margin="0,0,4,4" Click="AddEnterStepClick" />
+                  <Button Content="{DynamicResource RemoveStepLabel}" Margin="0,0,0,4" Click="RemoveStep" />
+                </WrapPanel>
+
+                <TextBlock Text="{DynamicResource MacroHelp}" TextWrapping="Wrap" MaxWidth="520"
+                           HorizontalAlignment="Left" FontSize="{DynamicResource FontSecondary}"
+                           Foreground="{DynamicResource TextDim}" Margin="0,10,0,0" />
+              </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- ========================== APPEARANCE ========================== -->
+      <!-- Themes are named, saved and reused, exactly like macros - so this page is laid out
+           like the macros page: the library on the left, and what the selected entry is made
+           of on the right.
+
+           A theme is two colors. The six grays are not choices; they are the shipped
+           palette's own lightness steps moved onto the shell color's hue, which is what stops
+           any theme from being the one where the panes vanish into the window. See Palette. -->
+      <TabItem x:Name="TabAppearancePage" Header="{DynamicResource TabAppearance}">
+        <Grid Margin="0,12,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <Border Grid.Column="0" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+            <DockPanel Margin="10">
+              <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" Content="{DynamicResource NewEntry}" Padding="10,2"
+                        Click="NewThemeClick">
+                  <Button.ToolTip>
+                    <ToolTip MaxWidth="360">
+                      <TextBlock Text="{DynamicResource NewThemeTip}" TextWrapping="Wrap" />
+                    </ToolTip>
+                  </Button.ToolTip>
+                </Button>
+                <TextBlock Text="{DynamicResource ThemeListLabel}" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+              </DockPanel>
+
+              <!-- Selecting previews; nothing is kept until Apply. That is what makes the list
+                   worth browsing - every theme can be seen at full size, on the real window,
+                   before committing to one. Leaving the tab puts back whatever was applied. -->
+              <TextBlock DockPanel.Dock="Bottom" Text="{DynamicResource ThemePreviewHelp}"
+                         TextWrapping="Wrap" FontSize="{DynamicResource FontSecondary}"
+                         Foreground="{DynamicResource TextDim}" Margin="0,8,0,0" />
+
+              <ListBox x:Name="LstThemes" SelectionChanged="ThemeSelected"
+                       PreviewMouseRightButtonDown="ThemeListRightClick"
+                       PreviewKeyDown="LibraryKeyDown"
+                       Background="Transparent" BorderThickness="0">
+                <ListBox.ToolTip>
+                  <ToolTip MaxWidth="360">
+                    <TextBlock Text="{DynamicResource ThemeListTip}" TextWrapping="Wrap" />
+                  </ToolTip>
+                </ListBox.ToolTip>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Text="{DynamicResource LiveThemeMarker}"
+                                 Foreground="{DynamicResource Active}" FontSize="{DynamicResource FontMarker}"
+                                 FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Margin="8,0,0,0"
+                                 Visibility="{Binding IsApplied, Converter={StaticResource BoolToVisibility}}" />
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <Border Grid.Column="1" Background="{DynamicResource Surface}"
+                  BorderBrush="{DynamicResource Accent}" BorderThickness="1" Margin="10,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="14">
+
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{DynamicResource CurrentSettingsFor}"
+                             FontSize="{DynamicResource FontHeading}" Foreground="{DynamicResource TextDim}" />
+                  <TextBlock x:Name="TxtThemeHeading" FontSize="{DynamicResource FontHeading}" FontWeight="SemiBold"
+                             Margin="6,0,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <!-- Apply is the one control here that acts on the page rather than on the
+                     entry, which is why it stays a button while rename, duplicate and delete
+                     moved to the list's menu: browse the library freely, then keep one. -->
+                <Button x:Name="BtnApplyTheme" Content="{DynamicResource ApplyTheme}"
+                        HorizontalAlignment="Left" Margin="0,10,0,0"
+                        Click="ApplyThemeClick">
+                        <Button.ToolTip>
+                          <ToolTip MaxWidth="360">
+                            <TextBlock Text="{DynamicResource ApplyThemeTip}" TextWrapping="Wrap" />
+                          </ToolTip>
+                        </Button.ToolTip>
+                      </Button>
+
+                <!-- Says which of the two things on this page is happening: looking at a theme,
+                     or using one. Without it the grayed-out Apply reads as "your change cannot
+                     be saved" rather than "there is nothing left to apply". -->
+                <TextBlock x:Name="TxtApplyState" TextWrapping="Wrap" MaxWidth="560"
+                           HorizontalAlignment="Left" FontSize="{DynamicResource FontSecondary}" Margin="0,4,0,0" />
+
+                <!-- Text size, OUTSIDE the theme editor below and above the preset note,
+                     because it is not a property of the selected theme: it applies to the
+                     whole application. It sat inside the editor while it was, which meant it
+                     could not be reached at all while a preset was selected, and switching
+                     between two themes of different sizes relaid out the page every time.
+
+                     One number: every other size in the window is a fixed distance from it,
+                     so the hierarchy cannot be flattened by choosing badly. The TYPEFACE is
+                     not here and is not a choice - it is whatever Windows itself uses for
+                     message text. Offering every installed family was tried and withdrawn:
+                     this window is calibrated to one metric, and a dozen places distinguish
+                     themselves by SemiBold against Normal, a weight most families lack. -->
+                <TextBlock Text="{DynamicResource TextGroupLabel}" FontWeight="SemiBold"
+                           Margin="0,16,0,6" />
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,4">
+                  <Label Content="{DynamicResource FontSizeLabel}" VerticalAlignment="Center"
+                         Margin="0,0,8,0" />
+                  <ComboBox x:Name="CboFontSize" Width="80" VerticalAlignment="Center"
+                            SelectionChanged="FontSizeChosen">
+                    <ComboBox.ToolTip>
+                      <ToolTip MaxWidth="360">
+                        <TextBlock Text="{DynamicResource FontSizeTip}" TextWrapping="Wrap" />
+                      </ToolTip>
+                    </ComboBox.ToolTip>
+                  </ComboBox>
+                </StackPanel>
+
+                <!-- Shown instead of the swatches when a preset is selected. A preset cannot be
+                     edited - it is compiled into the assembly - and grayed-out swatches would
+                     invite clicking without saying why nothing happened. -->
+                <TextBlock x:Name="TxtPresetNote" Text="{DynamicResource PresetThemeNote}"
+                           TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"
+                           FontSize="{DynamicResource FontSecondary}" Foreground="{DynamicResource TextDim}"
+                           Margin="0,12,0,0" Visibility="Collapsed" />
+
+                <StackPanel x:Name="PanelThemeEditor" Visibility="Collapsed">
+
+                  <TextBlock Text="{DynamicResource ColorGroupLabel}" FontWeight="SemiBold"
+                             Margin="0,10,0,0" />
+
+                  <!-- Which of the three the picker below is editing. Paint's model: choose
+                       the slot, then choose the color, so one picker serves all three and
+                       the three current colors stay on screen together - which is the
+                       comparison that actually matters when picking them. -->
+                  <WrapPanel x:Name="PanelTargets" Orientation="Horizontal" MaxWidth="560"
+                             HorizontalAlignment="Left" Margin="0,14,0,0" />
+
+                  <TextBlock x:Name="TxtTargetHelp" TextWrapping="Wrap" MaxWidth="560"
+                             HorizontalAlignment="Left" FontSize="{DynamicResource FontSecondary}"
+                             Foreground="{DynamicResource TextDim}" Margin="0,10,0,10" />
+
+                  <controls:ColorPicker x:Name="Picker" HorizontalAlignment="Left" />
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+
+    </TabControl>
+
+    <!-- Status bar -->
+    <!-- Shell, not Surface. The panes are things laid ON the window - the assignment lists,
+         the device, the libraries - and the status bar is not one of them: it is an edge of
+         the window itself, like the title bar. Wearing the pane color made it read as a
+         fourth panel with nothing in it. -->
+    <Border Grid.Row="2" Background="{DynamicResource Background}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+      <!-- Docked children come first and the filler last, which is what actually pins the
+           right-hand group to the right edge: a DockPanel gives its final child the leftover
+           space regardless of the Dock set on it, so the status message has to be the one
+           declared last. -->
+      <!-- Two fixed things and nothing that changes. It used to carry a running commentary,
+           which meant the one line at the bottom of the window was never the same twice and so
+           was never read: what it said had already been said by the control that caused it. -->
+      <DockPanel Margin="12,6">
+        <TextBlock DockPanel.Dock="Right" x:Name="TxtHelp" Margin="16,0,0,0"
+                   VerticalAlignment="Center" Text="{DynamicResource HelpLink}"
+                   Foreground="{DynamicResource Accent}" FontSize="{DynamicResource FontSecondary}"
+                   Cursor="Hand" TextDecorations="Underline" MouseLeftButtonUp="OpenHelp" />
+
+        <TextBlock x:Name="TxtVersion" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextDim}" FontSize="{DynamicResource FontSecondary}" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

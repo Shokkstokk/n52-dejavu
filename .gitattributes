@@ -1,0 +1,9 @@
+# Line endings are normalized on the way in and restored on the way out, so a checkout on
+# Windows gets CRLF and the stored blobs stay LF. Without this the first commit of this tree
+# reported forty-two "LF will be replaced by CRLF" warnings, which is the kind of noise that
+# trains people to stop reading warnings.
+* text=auto
+
+# Binary, and diffing or normalizing either would corrupt it.
+*.png  binary
+*.ico  binary

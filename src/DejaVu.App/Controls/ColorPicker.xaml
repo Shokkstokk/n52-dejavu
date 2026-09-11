@@ -1,0 +1,169 @@
+﻿<UserControl x:Class="DejaVu.App.Controls.ColorPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    The picker every graphics application draws: a saturation/value square for the chosen
+    hue, a spectrum beside it, and the numbers for anyone who knows the value they want.
+
+    Built here rather than calling up the stock Windows color dialog. That one is the 1995
+    dialog - fixed light gray, its own typography, its own idea of a button - and it would
+    arrive in the middle of a themed dark window looking like a screenshot from another
+    machine. It is also modal, and modal is the one thing this control must not be: the whole
+    point is that the window behind it recolors while you drag.
+  -->
+
+  <StackPanel>
+    <StackPanel Orientation="Horizontal">
+
+      <!-- Saturation and value. The hue underneath, white washed across it, black washed down
+           it - the three layers every picker of this shape is made of. -->
+      <Border BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="3">
+        <!-- The tooltip sits on the container rather than on each layer inside it: nothing in
+             here carries one of its own, and ToolTipService walks up from whatever the mouse
+             actually hit until it finds one. -->
+        <Grid x:Name="Field" Width="236" Height="168" Cursor="Cross"
+              MouseLeftButtonDown="FieldDown" MouseMove="FieldMove" MouseLeftButtonUp="FieldUp">
+          <Grid.ToolTip>
+            <ToolTip MaxWidth="360">
+              <TextBlock Text="{DynamicResource PickerFieldTip}" TextWrapping="Wrap" />
+            </ToolTip>
+          </Grid.ToolTip>
+          <Rectangle x:Name="FieldHue" />
+          <Rectangle>
+            <Rectangle.Fill>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Offset="0" Color="#FFFFFFFF" />
+                <GradientStop Offset="1" Color="#00FFFFFF" />
+              </LinearGradientBrush>
+            </Rectangle.Fill>
+          </Rectangle>
+          <Rectangle>
+            <Rectangle.Fill>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#00000000" />
+                <GradientStop Offset="1" Color="#FF000000" />
+              </LinearGradientBrush>
+            </Rectangle.Fill>
+          </Rectangle>
+
+          <!-- A ring rather than a dot: it has to stay visible over white and over black,
+               and an outlined circle is legible on both. -->
+          <Canvas ClipToBounds="True">
+            <Ellipse x:Name="FieldCursor" Width="13" Height="13" IsHitTestVisible="False"
+                     Stroke="White" StrokeThickness="2">
+              <Ellipse.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="3" Opacity="0.9" Color="Black" />
+              </Ellipse.Effect>
+            </Ellipse>
+          </Canvas>
+        </Grid>
+      </Border>
+
+      <!-- Hue. Red at both ends because the spectrum is a circle cut open. -->
+      <Border BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="3"
+              Margin="10,0,0,0">
+        <Grid x:Name="Spectrum" Width="22" Height="168" Cursor="Cross"
+              MouseLeftButtonDown="SpectrumDown" MouseMove="SpectrumMove" MouseLeftButtonUp="SpectrumUp">
+          <Grid.ToolTip>
+            <ToolTip MaxWidth="360">
+              <TextBlock Text="{DynamicResource PickerSpectrumTip}" TextWrapping="Wrap" />
+            </ToolTip>
+          </Grid.ToolTip>
+          <Rectangle>
+            <Rectangle.Fill>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0.000" Color="#FF0000" />
+                <GradientStop Offset="0.167" Color="#FFFF00" />
+                <GradientStop Offset="0.333" Color="#00FF00" />
+                <GradientStop Offset="0.500" Color="#00FFFF" />
+                <GradientStop Offset="0.667" Color="#0000FF" />
+                <GradientStop Offset="0.833" Color="#FF00FF" />
+                <GradientStop Offset="1.000" Color="#FF0000" />
+              </LinearGradientBrush>
+            </Rectangle.Fill>
+          </Rectangle>
+          <Canvas ClipToBounds="True">
+            <Rectangle x:Name="SpectrumCursor" Width="22" Height="3" IsHitTestVisible="False"
+                       Fill="White">
+              <Rectangle.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="3" Opacity="0.9" Color="Black" />
+              </Rectangle.Effect>
+            </Rectangle>
+          </Canvas>
+        </Grid>
+      </Border>
+
+      <!-- The numbers. Hex first: it is what a color gets written down as. -->
+      <StackPanel Margin="14,0,0,0" Width="128">
+        <Border x:Name="Preview" Height="34" CornerRadius="3" BorderThickness="1"
+                BorderBrush="{DynamicResource Line}">
+          <Border.ToolTip>
+            <ToolTip MaxWidth="360">
+              <TextBlock Text="{DynamicResource PickerPreviewTip}" TextWrapping="Wrap" />
+            </ToolTip>
+          </Border.ToolTip>
+        </Border>
+
+        <TextBox x:Name="TxtHex" Margin="0,8,0,0" TextChanged="HexTyped"
+                 CharacterCasing="Upper" MaxLength="7">
+          <TextBox.ToolTip>
+            <ToolTip MaxWidth="360">
+              <TextBlock Text="{DynamicResource PickerHexTip}" TextWrapping="Wrap" />
+            </ToolTip>
+          </TextBox.ToolTip>
+        </TextBox>
+
+        <Grid Margin="0,8,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <TextBox x:Name="TxtRed" Grid.Row="0" Grid.Column="0" Margin="0,0,0,4"
+                   MaxLength="3" TextChanged="ChannelTyped">
+            <TextBox.ToolTip>
+              <ToolTip MaxWidth="360">
+                <TextBlock Text="{DynamicResource PickerChannelTip}" TextWrapping="Wrap" />
+              </ToolTip>
+            </TextBox.ToolTip>
+          </TextBox>
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="R" Margin="8,0,0,0"
+                     VerticalAlignment="Center" Foreground="{DynamicResource TextDim}" />
+
+          <TextBox x:Name="TxtGreen" Grid.Row="1" Grid.Column="0" Margin="0,0,0,4"
+                   MaxLength="3" TextChanged="ChannelTyped">
+            <TextBox.ToolTip>
+              <ToolTip MaxWidth="360">
+                <TextBlock Text="{DynamicResource PickerChannelTip}" TextWrapping="Wrap" />
+              </ToolTip>
+            </TextBox.ToolTip>
+          </TextBox>
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="G" Margin="8,0,0,0"
+                     VerticalAlignment="Center" Foreground="{DynamicResource TextDim}" />
+
+          <TextBox x:Name="TxtBlue" Grid.Row="2" Grid.Column="0"
+                   MaxLength="3" TextChanged="ChannelTyped">
+            <TextBox.ToolTip>
+              <ToolTip MaxWidth="360">
+                <TextBlock Text="{DynamicResource PickerChannelTip}" TextWrapping="Wrap" />
+              </ToolTip>
+            </TextBox.ToolTip>
+          </TextBox>
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="B" Margin="8,0,0,0"
+                     VerticalAlignment="Center" Foreground="{DynamicResource TextDim}" />
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Somewhere to start from. Not a constraint on anything - the square above reaches every
+         color these do - just the common ones within one click. -->
+    <WrapPanel x:Name="PanelBasic" Orientation="Horizontal" Margin="0,10,0,0" MaxWidth="420"
+               HorizontalAlignment="Left" />
+  </StackPanel>
+</UserControl>
