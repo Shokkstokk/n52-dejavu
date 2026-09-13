@@ -19,7 +19,7 @@
 
   <Package Name="n52 DejaVu"
            Manufacturer="Shokkstokk"
-           Version="1.0.0"
+           Version="1.0.1"
            UpgradeCode="6F3A1C08-7B94-4E51-9C2D-0A5E8B41D7F2"
            Scope="perMachine"
            Compressed="yes">
