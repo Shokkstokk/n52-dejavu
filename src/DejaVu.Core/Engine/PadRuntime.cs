@@ -142,20 +142,6 @@ public sealed class PadRuntime : IDisposable
         LedState.Red | LedState.Green | LedState.Blue,   // 8
     ];
 
-    /// <summary>
-    /// Scancodes of the modifier keys, left and right hands alike. Used both to suppress
-    /// auto-repeat and to force-release them when the engine stops.
-    /// </summary>
-    private static readonly ushort[] ModifierScanCodes =
-    [
-        0x1D, // Ctrl, either side
-        0x2A, // Left Shift
-        0x36, // Right Shift
-        0x38, // Alt, either side
-        0x5B, // Left Win
-        0x5C, // Right Win
-    ];
-
     private N52UsbDevice? _usb;
     private N52KeyboardDevice? _keys;
     private int _mode;
@@ -190,17 +176,37 @@ public sealed class PadRuntime : IDisposable
     /// <summary>Set while the pad is suspended. See <see cref="Paused"/>.</summary>
     private volatile bool _quiet;
 
+    /// <summary>
+    /// The profile the pad was last told to obey, by id. Written only from the foreground
+    /// watcher's thread, which is the one place that decides a profile has changed.
+    /// </summary>
+    private string? _liveProfileId;
+
     public PadRuntime(LiveSettings config)
     {
         _settings = config;
         _frontApp.Changed += _ =>
         {
+            // The foreground changing is not the profile changing. Windows moves focus for
+            // reasons that resolve to the same profile - the alt-tab switcher is a window of
+            // its own, so is the Start menu, and with switching off every application maps
+            // to the fallback - and none of those is a reason to let go of anything.
+            var live = ActiveProfile;
+            if (string.Equals(live?.Id, _liveProfileId, StringComparison.Ordinal))
+            {
+                MacroTrace.Write($"Foreground -> {_frontApp.Current}: profile unchanged ({live?.Name})");
+                return;
+            }
+
+            _liveProfileId = live?.Id;
+            MacroTrace.Write($"Foreground -> {_frontApp.Current}: profile now {live?.Name}");
+
             // Let go of everything before the assignments change underneath us. A key held
             // across a profile switch would otherwise be released against the NEW profile's
             // binding — which may be Passthrough, in which case the release returns early
             // and the old action is never ended. That is a stuck key.
             ReleaseEverything();
-            ProfileChanged?.Invoke(ActiveProfile?.Name ?? string.Empty);
+            ProfileChanged?.Invoke(live?.Name ?? string.Empty);
         };
     }
 
@@ -1094,7 +1100,7 @@ public sealed class PadRuntime : IDisposable
         // Never repeat a modifier. Modifier state is level-triggered, so repeating a held
         // Ctrl or Shift changes nothing for any application — it is all risk and no
         // benefit, and a modifier is the worst thing to leave stuck.
-        if (ModifierScanCodes.Contains(action.ScanCode)) return;
+        if (Injector.ModifierScanCodes.Contains(action.ScanCode)) return;
 
         var (delay, interval) = Injector.RepeatTiming();
         var cancellation = new CancellationTokenSource();
@@ -1360,21 +1366,26 @@ public sealed class PadRuntime : IDisposable
         foreach (var loop in loops) loop.Cancel();
         foreach (var control in outstanding) End(control);
 
-        // Safety net: release every modifier whether or not we think we are holding it.
+        // Safety net: release whatever the injector still has down.
         //
         // Releasing only what _engaged knows about is not enough, because the dangerous case
         // is precisely the one where a key was left down without the engine recording it —
         // a bug here leaves the user with a stuck Ctrl and no way to clear it from inside
-        // the application. A redundant KeyUp for a key that is already up is harmless, so
-        // this costs nothing and closes the whole class of failure.
+        // the application. The injector's ledger is independent of _engaged and is written
+        // from what SendInput actually accepted, so it catches exactly that case.
+        //
+        // It must NOT be a blanket release of every modifier. That was tried, on the theory
+        // that a redundant key-up is harmless, and it is not: this runs on every foreground
+        // change, and a key-up for the Alt the user is physically holding closes the alt-tab
+        // switcher on its first step. Only ever release what this process itself pressed.
+        int swept;
         lock (_send)
         {
-            foreach (var scanCode in ModifierScanCodes)
-            {
-                Injector.KeyUp(scanCode, extended: false);
-                Injector.KeyUp(scanCode, extended: true);
-            }
+            swept = Injector.ReleaseAllHeld();
         }
+
+        MacroTrace.Write($"ReleaseEverything: ended {outstanding.Length} held, cancelled "
+                         + $"{loops.Length} loops, ledger released {swept}");
     }
 
     public void Dispose()

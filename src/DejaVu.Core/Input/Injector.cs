@@ -112,10 +112,97 @@ public static class Injector
 
         var accepted = SendInput((uint)batch.Length, in MemoryMarshal.GetReference(batch), InputRecord.Size);
         if (accepted < batch.Length) Interlocked.Add(ref Dropped, batch.Length - accepted);
+
+        // Only what Windows actually took. A press it refused never went down, so it must
+        // not be on the ledger waiting to be released.
+        Record(batch[..(int)accepted]);
     }
 
     private static void Dispatch(in InputRecord single)
         => Dispatch(MemoryMarshal.CreateReadOnlySpan(in single, 1));
+
+    // ---- What is down ------------------------------------------------------------
+
+    /// <summary>
+    /// Every keyboard event Windows accepted a press for and has not yet accepted a release
+    /// for, keyed exactly as it was sent - so the release can be the identical event with
+    /// the release bit set.
+    ///
+    /// This is the safety net against a stuck key, and the only correct one. The engine's
+    /// own bookkeeping of what it holds can be wrong - that is what a bug is - but this
+    /// ledger is written at the one place every event leaves the process, from SendInput's
+    /// own count of what it took. Releasing exactly this set clears anything the engine
+    /// left down and touches nothing else.
+    ///
+    /// "Nothing else" is the point. The previous net released every modifier scancode
+    /// unconditionally, on the theory that a redundant key-up is harmless. It is not: a
+    /// key-up for a key the USER is holding is a real release. Every foreground change sent
+    /// one for Alt, so holding Alt and pressing Tab committed the switcher to the next window
+    /// the moment it opened - alt-tab could only ever move one step while the app was running.
+    /// </summary>
+    private static readonly HashSet<(ushort ScanCode, ushort VirtualKey, uint Flags)> _held = [];
+
+    /// <summary>Scancodes of the modifier keys, both hands.</summary>
+    public static readonly ushort[] ModifierScanCodes =
+    [
+        0x1D, // Ctrl, either side
+        0x2A, // Left Shift
+        0x36, // Right Shift
+        0x38, // Alt, either side
+        0x5B, // Left Win
+        0x5C, // Right Win
+    ];
+
+    private static void Record(ReadOnlySpan<InputRecord> accepted)
+    {
+        lock (_held)
+        {
+            foreach (ref readonly var record in accepted)
+            {
+                if (record.Source != SourceKeyboard) continue;
+
+                var key = record.Body.Key;
+                var entry = (key.ScanCode, key.VirtualKey, key.Flags & ~KeyIsRelease);
+
+                if ((key.Flags & KeyIsRelease) != 0) _held.Remove(entry);
+                else _held.Add(entry);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Releases every key this process has sent down and not yet sent up. Modifiers go
+    /// last, so a held combination unwinds in the order it would be typed. Returns how many
+    /// were released.
+    /// </summary>
+    public static int ReleaseAllHeld()
+    {
+        (ushort ScanCode, ushort VirtualKey, uint Flags)[] held;
+        lock (_held) held = [.. _held];
+        if (held.Length == 0) return 0;
+
+        Array.Sort(held, (a, b) => IsModifier(a.ScanCode).CompareTo(IsModifier(b.ScanCode)));
+
+        var batch = new InputRecord[held.Length];
+        for (var i = 0; i < held.Length; i++)
+        {
+            var (scanCode, virtualKey, flags) = held[i];
+            batch[i] = new InputRecord
+            {
+                Source = SourceKeyboard,
+                Body = new EventBody
+                {
+                    Key = new KeyEvent { ScanCode = scanCode, VirtualKey = virtualKey, Flags = flags | KeyIsRelease },
+                },
+            };
+        }
+
+        // Record takes each one back off the ledger as Windows accepts it.
+        Dispatch(batch);
+        return held.Length;
+    }
+
+    private static bool IsModifier(ushort scanCode) => Array.IndexOf(ModifierScanCodes, scanCode) >= 0;
 
     // ---- Building events ---------------------------------------------------------
 
